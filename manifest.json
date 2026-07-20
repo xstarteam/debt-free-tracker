@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "Debt Free — محرر الديون",
+  "short_name": "Debt Free",
+  "description": "خطتك للتحرر من الديون — كرة الثلج أو الانهيار الجليدي. يعمل بدون إنترنت وبخصوصية كاملة.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0e1420",
+  "theme_color": "#0e1420",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
