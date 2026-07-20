@@ -2,7 +2,7 @@
  * Offline support only. No tracking, no analytics, no network beacons.
  * Strategy: cache-first, versioned cache. Bump CACHE_VERSION on every deploy.
  */
-const CACHE_VERSION = "debt-free-v1";
+const CACHE_VERSION = "debt-free-v2";
 
 /* Same-origin app shell — must all succeed or the SW will not install. */
 const CORE_ASSETS = [
