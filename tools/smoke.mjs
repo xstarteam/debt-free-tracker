@@ -10,8 +10,8 @@
  * encrypted), corrupt backup resilience, XSS probe, never-ending plan + fix,
  * lump sum (one-off and yearly), DTI, daily cost, monthly check-in + undo,
  * goal tracking, custom order, contract helper, debt buyout calculator,
- * share card, calendar reminder, keyboard chart, CSP violations, axe scan,
- * offline (airplane mode) and the update path.
+ * share card, calendar reminder, keyboard chart, guide pages, CSP violations,
+ * axe scan, offline (airplane mode, app and guides) and the update path.
  *
  * Dev-only dependencies: Playwright (PLAYWRIGHT_MODULE) and optionally
  * axe-core (AXE_PATH -> axe.min.js) for the accessibility scan.
@@ -499,6 +499,26 @@ await check('debt buyout: a long cheap loan costs more, a short one saves', asyn
   await page.waitForTimeout(300);
   return `120 months: ${long.slice(0, 40)}… · 36 months: ${short.slice(0, 40)}… · a11y ${r}`;
 });
+await check('guides: every page renders, links back to the app, no CSP violations', async () => {
+  const seen = [];
+  for (const g of ['guides/', 'guides/snowball-vs-avalanche.html', 'guides/flat-vs-reducing-rate.html', 'guides/debt-buyout.html']) {
+    await page.goto(`${BASE}/${g}`);
+    await settle(page, 150);
+    assert(await page.isVisible('h1'), `${g}: no h1`);
+    assert(await page.$('a[href="../"]'), `${g}: no link to the app`);
+    const csp = await page.evaluate(() => window.__csp);
+    assert(!csp.length, `${g}: ${csp.join(', ')}`);
+    seen.push((await text(page, 'h1')).slice(0, 24));
+  }
+  await shot(page, '14-guide');
+  return seen.join(' · ');
+});
+await check('a11y: guide page', () => axe(page, 'guide'));
+await check('guide call-to-action opens the buyout calculator in the app', async () => {
+  await page.click('.guide-cta .btn-primary');
+  await page.waitForSelector('dialog[open] .bo-verdict', { timeout: 5000 });
+  return 'opened';
+});
 await ctx.close();
 
 /* ---------- 6. never-ending plan, reminder, share card ---------- */
@@ -563,9 +583,14 @@ await check('offline: after first visit the app loads in airplane mode', async (
   await settle(page, 400);
   const fig = await text(page, '.hero-figure');
   const fonts = await page.evaluate(() => document.fonts.check('16px "IBM Plex Sans Arabic"'));
+  await page.goto(`${BASE}/guides/flat-vs-reducing-rate.html`);
+  const guide = await text(page, 'h1');
+  await page.goto(BASE);
+  await settle(page, 300);
   await ctx.setOffline(false);
   assert(fig && fonts, 'offline render failed');
-  return `${fig}, self-hosted font loaded offline`;
+  assert(/النسبة الثابتة/.test(guide), `guide offline: ${guide}`);
+  return `${fig}, self-hosted font and guides available offline`;
 });
 await check('update path: new deploy → "new version" prompt → reload on tap', async () => {
   swSuffix = '-next';

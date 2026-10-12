@@ -7,7 +7,7 @@
  */
 
 // <precache>
-const VERSION = '2.1.0-8259103c80';
+const VERSION = '2.1.0-40c7129dda';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -36,6 +36,11 @@ const PRECACHE = [
   '/assets/img/icon-512.png',
   '/assets/img/icon-maskable-512.png',
   '/assets/img/apple-touch-icon.png',
+  '/assets/guide.css',
+  '/guides/debt-buyout.html',
+  '/guides/flat-vs-reducing-rate.html',
+  '/guides/index.html',
+  '/guides/snowball-vs-avalanche.html',
 ];
 // </precache>
 
@@ -70,11 +75,19 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // the app makes no cross-origin requests
 
-  // Navigations: the app shell from this version's cache, so HTML and assets always match.
+  // Navigations: pages from this version's cache, so HTML and assets always match.
+  // The app shell answers for "/" (any query) and, offline, for unknown pages.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
-      return (await cache.match('/index.html')) || fetch(req);
+      const path = url.pathname === '/' ? '/index.html' : url.pathname.endsWith('/') ? `${url.pathname}index.html` : url.pathname;
+      const hit = await cache.match(path);
+      if (hit) return hit;
+      try {
+        return await fetch(req);
+      } catch {
+        return (await cache.match('/index.html')) || Response.error();
+      }
     })());
     return;
   }
