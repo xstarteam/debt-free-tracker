@@ -7,7 +7,7 @@
  */
 
 // <precache>
-const VERSION = '2.0.0-093e38986a';
+const VERSION = '2.0.0-7d82139827';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -24,6 +24,7 @@ const PRECACHE = [
   '/assets/js/share.js',
   '/assets/js/store.js',
   '/assets/js/ui.js',
+  '/assets/js/vault.js',
   '/assets/fonts/plex-arabic-arabic-400.woff2',
   '/assets/fonts/plex-arabic-arabic-600.woff2',
   '/assets/fonts/plex-arabic-arabic-700.woff2',

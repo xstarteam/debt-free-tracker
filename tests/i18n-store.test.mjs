@@ -100,3 +100,27 @@ test('backups: garbage is rejected without throwing', () => {
   }
   assert.equal(parseBackup('{"debts": []}').ok, true);
 });
+
+test('v2.1 settings: custom order, yearly bonus and goal month are validated', () => {
+  const s = sanitizeSettings({ strategy: 'custom', lumpRepeat: true, goalMonth: '2029-05', goalSetAt: '2026-10-12T09:00:00Z' });
+  assert.equal(s.strategy, 'custom');
+  assert.equal(s.lumpRepeat, true);
+  assert.equal(s.goalMonth, '2029-05');
+  assert.equal(s.goalSetAt, '2026-10-12T09:00:00.000Z');
+  const bad = sanitizeSettings({ strategy: 'random', lumpRepeat: 'yes', goalMonth: '2029-13', goalSetAt: 'not a date' });
+  assert.equal(bad.strategy, DEFAULT_SETTINGS.strategy);
+  assert.equal(bad.lumpRepeat, false);
+  assert.equal(bad.goalMonth, '');
+  assert.equal(bad.goalSetAt, '');
+});
+
+test('debt priority survives sanitising and backups; junk is dropped', () => {
+  const base = { name: 'سلفة', balanceFils: 400000, minFils: 50000 };
+  assert.equal(sanitizeDebt({ ...base, priority: 2 }).priority, 2);
+  assert.equal('priority' in sanitizeDebt({ ...base, priority: -1 }), false);
+  assert.equal('priority' in sanitizeDebt({ ...base, priority: 1.5 }), false);
+  assert.equal('priority' in sanitizeDebt({ ...base, priority: '1' }), false);
+  const round = parseBackup(makeBackup([sanitizeDebt({ ...base, priority: 3 })], { ...DEFAULT_SETTINGS, strategy: 'custom' }));
+  assert.equal(round.debts[0].priority, 3);
+  assert.equal(round.settings.strategy, 'custom');
+});

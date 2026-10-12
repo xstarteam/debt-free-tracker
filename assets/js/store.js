@@ -20,24 +20,29 @@ export const DEFAULT_SETTINGS = Object.freeze({
   rollover: true,
   lumpFils: 0,
   lumpMonth: '',
+  lumpRepeat: false,
   currency: 'KWD',
   terms: 'interest',
   incomeFils: 0,
   lastBackupAt: '',
   demo: false,
   remindDay: 25,
+  goalMonth: '',
+  goalSetAt: '',
 });
 
 const ENUMS = {
   lang: ['ar', 'en'],
   theme: ['system', 'light', 'dark'],
-  strategy: ['snowball', 'avalanche'],
+  strategy: ['snowball', 'avalanche', 'custom'],
   currency: Object.keys(CURRENCIES),
   terms: ['interest', 'profit'],
 };
 
 const MAX_DEBTS = 500;
 const MAX_PAYMENTS = 2000;
+const MAX_PRIORITY = 100_000;
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const filsOrNull = v => (Number.isFinite(v) && v >= 0 && v <= MAX_FILS ? Math.round(v) : null);
@@ -63,11 +68,11 @@ export function sanitizeSettings(raw, base = DEFAULT_SETTINGS) {
     } else if (key === 'extraFils' || key === 'lumpFils' || key === 'incomeFils') {
       const f = filsOrNull(v);
       if (f !== null) out[key] = f;
-    } else if (key === 'rollover' || key === 'demo') {
+    } else if (key === 'rollover' || key === 'demo' || key === 'lumpRepeat') {
       if (typeof v === 'boolean') out[key] = v;
-    } else if (key === 'lumpMonth') {
-      if (v === '' || /^\d{4}-(0[1-9]|1[0-2])$/.test(v)) out[key] = v;
-    } else if (key === 'lastBackupAt') {
+    } else if (key === 'lumpMonth' || key === 'goalMonth') {
+      if (v === '' || MONTH_KEY.test(v)) out[key] = v;
+    } else if (key === 'lastBackupAt' || key === 'goalSetAt') {
       out[key] = v ? isoOr(v, '') : '';
     } else if (key === 'remindDay') {
       if (Number.isInteger(v) && v >= 1 && v <= 28) out[key] = v;
@@ -118,6 +123,8 @@ export function sanitizeDebt(raw) {
     paidAt: balanceFils === 0 ? isoOr(raw.paidAt, payments.at(-1)?.at || new Date().toISOString()) : '',
     demo: raw.demo === true,
   };
+  // position in a custom payoff order (v2.1); absent = after the ranked debts
+  if (Number.isInteger(raw.priority) && raw.priority >= 0 && raw.priority <= MAX_PRIORITY) debt.priority = raw.priority;
   if (Number.isSafeInteger(raw.id) && raw.id > 0) debt.id = raw.id;
   return debt;
 }
@@ -230,6 +237,15 @@ class IdbStore {
     return id;
   }
 
+  /** Several debts in one transaction: all saved or none (monthly check-in, reorder). */
+  async putDebts(debts) {
+    const tx = this.db.transaction('debts', 'readwrite');
+    const finished = done(tx);
+    const store = tx.objectStore('debts');
+    debts.forEach(d => store.put(d));
+    await finished;
+  }
+
   async deleteDebt(id) {
     const tx = this.db.transaction('debts', 'readwrite');
     const finished = done(tx);
@@ -279,6 +295,8 @@ class MemoryStore {
   async putDebt(debt) {
     return debt.id ?? this.next++;
   }
+
+  async putDebts() {}
 
   async deleteDebt() {}
 

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   simulate, buildPlan, minExtraToFinish, underwaterDebts, monthlyInterest,
-  monthOffset, monthKey, MAX_MONTHS,
+  monthOffset, monthKey, MAX_MONTHS, targetId, payoffOrder, monthAllocation, dailyCost,
+  flatToApr, contractTerms, buyoutCompare,
 } from '../assets/js/engine.js';
 
 const KD = n => Math.round(n * 1000);
@@ -144,4 +145,110 @@ test('month helpers', () => {
   assert.equal(monthOffset(from, '2026-11'), 1);
   assert.equal(monthOffset(from, '2027-10'), 12);
   assert.equal(monthOffset(from, 'garbage'), 0);
+});
+
+/* ---------------- v2.1 ---------------- */
+
+test('custom order sends the extra money to the user\'s first pick', () => {
+  const rank = { personal: 0, car: 1, card: 2, tabby: 3 };
+  const debts = sample().map(d => ({ ...d, priority: rank[d.id] }));
+  assert.equal(targetId(debts, 'custom'), 'personal');
+  assert.deepEqual(payoffOrder(debts, 'custom'), ['personal', 'car', 'card', 'tabby']);
+  const c = simulate(debts, { strategy: 'custom', extra: KD(50) });
+  const s = simulate(debts, { strategy: 'snowball', extra: KD(50) });
+  assert.equal(c.status, 'ok');
+  assert.ok(c.payoffMonth.personal < s.payoffMonth.personal, 'personal is cleared sooner when it is first');
+  assert.equal(c.totalPaid, c.startTotal + c.totalInterest);
+  // debts without a position go after the ranked ones
+  const partial = sample().map(d => (d.id === 'car' ? { ...d, priority: 0 } : d));
+  assert.equal(targetId(partial, 'custom'), 'car');
+});
+
+test('buildPlan follows the custom order and rejects unknown strategies', () => {
+  const rank = { tabby: 0, personal: 1, car: 2, card: 3 };
+  const debts = sample().map(d => ({ ...d, priority: rank[d.id] }));
+  const plan = buildPlan(debts, { strategy: 'custom', extra: KD(50) });
+  assert.equal(plan.selected, 'custom');
+  assert.equal(plan.current, plan.custom);
+  assert.ok(plan.custom.totalInterest >= plan.avalanche.totalInterest, 'avalanche stays the cheapest');
+  assert.equal(buildPlan(debts, { strategy: 'nonsense' }).selected, 'snowball');
+  assert.equal(buildPlan(debts, { strategy: 'snowball' }).custom, null);
+});
+
+test('a yearly bonus repeats every 12 months', () => {
+  const debts = [{ id: 'a', balance: KD(3000), minPayment: KD(100), rate: 0 }];
+  const once = simulate(debts, { lumpSum: { month: 3, amount: KD(500) } });
+  const yearly = simulate(debts, { lumpSum: { month: 3, amount: KD(500), every: 12 } });
+  assert.equal(once.months, 25);
+  assert.equal(yearly.months, 20);
+  assert.equal(yearly.timeline[2].paid, KD(600));
+  assert.equal(yearly.timeline[14].paid, KD(600)); // month 15 = 3 + 12
+  assert.equal(yearly.timeline[13].paid, KD(100));
+});
+
+test('next month allocation: every minimum, the extra to the target', () => {
+  const snow = monthAllocation(sample(), { strategy: 'snowball', extra: KD(50) });
+  assert.deepEqual(snow, { tabby: KD(125), card: KD(60), car: KD(180), personal: KD(250) });
+  const aval = monthAllocation(sample(), { strategy: 'avalanche', extra: KD(50) });
+  assert.equal(aval.card, KD(110));
+  const total = Object.values(snow).reduce((a, b) => a + b, 0);
+  assert.equal(total, simulate(sample(), { strategy: 'snowball', extra: KD(50) }).timeline[0].paid);
+});
+
+test('daily cost of today\'s balances', () => {
+  // first-month interest is 100.292 KWD; x 12 / 365 = 3.297 KWD a day
+  assert.equal(dailyCost(sample()), 3297);
+  assert.equal(dailyCost([{ id: 'a', balance: KD(500), minPayment: KD(50), rate: 0 }]), 0);
+});
+
+test('a flat-rate contract converts to its real reducing rate', () => {
+  const apr = flatToApr(4, 60);
+  assert.ok(apr > 7.41 && apr < 7.43, `apr ${apr}`);
+  const c = contractTerms({ principal: KD(10000), rate: 4, months: 60, method: 'flat' });
+  assert.equal(c.installment, KD(200));
+  assert.equal(c.balance, KD(10000));
+  assert.equal(c.totalCost, KD(2000));
+  // fed the converted figures, the engine reproduces the contract
+  const real = simulate([{ id: 'car', balance: c.balance, minPayment: c.installment, rate: c.apr }]);
+  assert.equal(real.months, 60);
+  assert.ok(Math.abs(real.totalInterest - KD(2000)) < KD(1), `interest ${real.totalInterest}`);
+  // typed as a plain 4%, the same loan looks 5 months shorter and less than half the cost
+  const naive = simulate([{ id: 'car', balance: KD(10000), minPayment: KD(200), rate: 4 }]);
+  assert.equal(naive.months, 55);
+  assert.ok(naive.totalInterest < KD(1000));
+});
+
+test('contract balance after installments already paid', () => {
+  const c = contractTerms({ principal: KD(10000), rate: 4, months: 60, paid: 12, method: 'flat' });
+  assert.equal(c.remaining, 48);
+  assert.ok(c.balance > KD(8000) && c.balance < KD(10000), `balance ${c.balance}`);
+  const sim = simulate([{ id: 'car', balance: c.balance, minPayment: c.installment, rate: c.apr }]);
+  assert.equal(sim.months, 48);
+  assert.ok(Math.abs(sim.totalInterest - c.remainingCost) < KD(1), `${sim.totalInterest} vs ${c.remainingCost}`);
+  assert.equal(contractTerms({ principal: KD(10000), rate: 4, months: 60, paid: 60, method: 'flat' }).balance, 0);
+  // reducing-rate contract: the standard annuity installment
+  assert.equal(contractTerms({ principal: KD(10000), rate: 5, months: 60, method: 'reducing' }).installment, 188712);
+  assert.equal(contractTerms({ principal: KD(1200), rate: 0, months: 12, method: 'flat' }).installment, KD(100));
+  assert.equal(contractTerms({ principal: 0, rate: 4, months: 12 }), null);
+  assert.equal(contractTerms({ principal: KD(100), rate: 4, months: 0 }), null);
+});
+
+test('debt buyout compares total cost, term and installment', () => {
+  const debts = [
+    { id: 'card', balance: KD(1200), minPayment: KD(60), rate: 18 },
+    { id: 'personal', balance: KD(9000), minPayment: KD(250), rate: 7 },
+  ];
+  const r = buyoutCompare(debts, { rate: 5, method: 'reducing', months: 48, fees: KD(50) });
+  assert.equal(r.amount, KD(10200));
+  assert.equal(r.current.installment, KD(310));
+  assert.equal(r.current.status, 'ok');
+  assert.equal(r.offer.fees, KD(50));
+  assert.equal(r.offer.total, r.amount + r.offer.cost);
+  assert.equal(r.saving, r.current.total - r.offer.total);
+  assert.equal(r.monthlyRelief, r.current.installment - r.offer.installment);
+  // a cheaper rate over a much longer term lowers the installment but costs more in total
+  const long = buyoutCompare(debts, { rate: 5, method: 'reducing', months: 120 });
+  assert.ok(long.monthlyRelief > r.monthlyRelief);
+  assert.ok(long.offer.cost > r.offer.cost, 'longer term, more total cost');
+  assert.equal(buyoutCompare([], { rate: 5, months: 12 }), null);
 });
