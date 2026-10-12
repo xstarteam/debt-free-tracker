@@ -1,38 +1,45 @@
-# محرر الديون — Debt Free Tracker
+# محرر الديون — Debt Free
+
+![محرر الديون](assets/img/og-image.png)
 
 <div dir="rtl">
 
 ## نظرة عامة
 
-**محرر الديون** تطبيق ويب لتخطيط سداد الديون ومتابعتها. يحسب لك تاريخ حريتك المالية،
-ويقارن بين استراتيجيتَي السداد — **كرة الثلج ❄️** و **الانهيار الجليدي 🏔️** — ليبيّن لك
-أيهما ينهي ديونك أسرع وأيهما يوفّر فوائد أكثر.
+**محرر الديون** يقول لك بالضبط في أي شهر تتحرر من ديونك. يقارن بين طريقتين للسداد: **كرة الثلج** (الأصغر رصيداً أولاً) و**الانهيار الجليدي** (الأعلى فائدة أولاً)، ويبيّن لك أي وحدة توفر أكثر، وكم تقرّب تاريخ تحررك أي دفعة إضافية.
 
-## الخصوصية أولاً
-
-بياناتك **لا تغادر جهازك أبداً**. لا خوادم، ولا حسابات، ولا تتبّع، ولا تحليلات.
-كل شيء يُحفظ محلياً في متصفحك عبر IndexedDB، ويمكنك تصدير نسخة احتياطية أو
-مسح كل شيء متى شئت.
+بياناتك **ما تطلع من جهازك**. ما في حسابات ولا سيرفرات ولا تتبّع، والتطبيق يشتغل بدون إنترنت ويتثبت على الجوال مثل أي تطبيق.
 
 ## المميزات
 
-- حساب تاريخ التحرر من الديون وإجمالي الفوائد المتوقعة
-- مقارنة مباشرة بين كرة الثلج والانهيار الجليدي
-- دفعة إضافية شهرية لرؤية أثرها فوراً
-- جدول سداد شهري ورسم بياني لتناقص الديون
-- عربي (RTL) وإنجليزي (LTR) — الوضع الليلي والنهاري
-- يعمل بدون إنترنت، وقابل للتثبيت على الجوال (PWA)
-- تصدير واستعادة نسخة احتياطية بصيغة JSON
+- تاريخ التحرر من الديون، ونسبة المسدَّد، والدفعة الشهرية، والفوائد المتوقعة.
+- مقارنة حيّة بين الطريقتين، مع جملة واضحة توضح كم توفر وزر لاعتماد الأفضل.
+- شريط للدفعة الإضافية يحدّث الأرقام فوراً («توفّر 374 د.ك وتتحرر قبل 6 أشهر»).
+- دفعة مقطوعة في شهر تختاره (مكافأة أو منحة أو بيع شي).
+- القسط اللي يتحرر بعد سداد أي دين ينتقل تلقائياً للدين اللي بعده، فتبقى دفعتك الشهرية ثابتة.
+- لكل دين: ترتيبه في الخطة، وتاريخ سداده المتوقع، وشريط تقدم، وسجل دفعات تقدر تتراجع عنها.
+- رسم بياني تفاعلي (باللمس أو الماوس أو لوحة المفاتيح)، ومحطات التحرر، وجدول شهري مقسم حسب السنة.
+- تنبيه واضح إذا الخطة ما تنتهي، مع زر يطبّق المبلغ اللي يخليها تنتهي.
+- **وضع التمويل الإسلامي**: كلمة «ربح» بدل «فائدة»، مع إرشاد للمرابحة والتورق.
+- **نسبة الأقساط من الراتب** مقارنة بالحد الشائع (40%).
+- طباعة الخطة أو حفظها PDF، وتذكير شهري بالتقويم (.ics)، وبطاقة إنجاز للستوري **بدون أي مبالغ**.
+- بيانات تجريبية بضغطة واحدة للعرض، وزر يرجعك لبياناتك.
+- عربي (من اليمين لليسار) وإنجليزي (من اليسار لليمين)، ومظهر فاتح وداكن وتلقائي، والأرقام لاتينية في كل التطبيق.
+- عملات الخليج (د.ك، ر.س، د.إ، ر.ق، د.ب، ر.ع) والدولار.
+- نسخ احتياطي واستعادة بملف JSON، مع التحقق من الملف قبل الاستعادة.
 
 ## التشغيل
 
-افتح `index.html` مباشرة في المتصفح، أو شغّل خادماً محلياً:
+ما في خطوة بناء ولا مكتبات خارجية. شغّل خادم ملفات محلي:
 
 ```bash
-python -m http.server 8080
+python3 -m http.server 8080
+# ثم افتح http://localhost:8080
 ```
 
-لا توجد خطوة بناء ولا اعتماديات — التطبيق ملف HTML واحد مكتفٍ بذاته.
+> افتحه عن طريق خادم، مو بالضغط على الملف مباشرة، لأن وحدات JavaScript ووضع العمل بدون إنترنت يحتاجون عنوان http.
+
+**للعرض (الديمو):** افتح التطبيق، واضغط «جرّب ببيانات تجريبية»، وحرّك شريط الدفعة الإضافية، وبعدها اضغط «اعتمد الانهيار الجليدي». ولما تخلص اضغط «ابدأ ببياناتي».
 
 </div>
 
@@ -40,47 +47,57 @@ python -m http.server 8080
 
 ## Overview
 
-**Debt Free Tracker** is a web app for planning and tracking debt payoff. It calculates
-your financial freedom date and compares the two payoff strategies — **Snowball ❄️** and
-**Avalanche 🏔️** — showing which clears your debts sooner and which saves more interest.
+**Debt Free** tells you the exact month you will be free of debt. It compares the **Snowball** (smallest balance first) and **Avalanche** (highest rate first) strategies, shows which one saves more, and how much sooner any extra payment gets you there. Arabic-first (RTL) with full English, built for Kuwait and the GCC.
 
-## Privacy first
+Privacy is structural: no accounts, no servers, no analytics. Data lives in the browser (IndexedDB) and the Content-Security-Policy (`connect-src 'self'`, no third-party hosts at all) means the page *cannot* send it anywhere.
 
-Your data **never leaves your device**. No servers, no accounts, no tracking, no analytics.
-Everything is stored locally in your browser via IndexedDB. Export a backup or wipe
-everything at any time.
+## Architecture
 
-## Features
+Static, zero-dependency PWA: no framework, no build step, no runtime third-party requests (fonts and icons are self-hosted). See [ADR 0001](docs/adr/0001-modular-static-pwa.md).
 
-- Debt-free date and projected total interest
-- Side-by-side Snowball vs. Avalanche comparison
-- Extra monthly payment with instant impact
-- Monthly amortization table and payoff chart
-- Arabic (RTL) and English (LTR), dark and light themes
-- Works offline, installable on mobile (PWA)
-- JSON backup export and restore
+| Path | Role |
+|---|---|
+| `index.html` | Shell, CSP, SEO/OG meta |
+| `assets/app.css` | Design system: tokens (light/dark), components, print, RTL via logical properties |
+| `assets/js/engine.js` | Pure payoff engine (integer fils, rollover, lump sum, never-ending detection) |
+| `assets/js/money.js` | Parse/format money (Arabic digits in, Latin digits out, 3-decimal KWD) |
+| `assets/js/i18n.js` | Arabic/English copy, Arabic plural rules, interest/profit terminology |
+| `assets/js/store.js` | IndexedDB, schema v1→v2 migration, backup validation |
+| `assets/js/app.js` | State, rendering, dialogs, interactions |
+| `assets/js/chart.js` | Dependency-free SVG chart with crosshair tooltip and keyboard support |
+| `assets/js/ui.js` / `share.js` / `icons.js` / `boot.js` | DOM helpers, story card + `.ics`, Lucide icons, first-paint prefs |
+| `sw.js` | Offline app shell; precache block generated by `tools/stamp-sw.mjs` |
+| `vercel.json` / `.vercelignore` | Security headers + caching; only runtime files are deployed |
 
-## Running it
+**Money** is stored and computed as integer fils (1 KWD = 1000 fils); interest is rounded to the fil each month, so a plan's totals always reconcile (`paid = start + interest`).
 
-Open `index.html` in a browser, or serve it locally:
+**Data migration:** records saved by v1 (float amounts) are converted to v2 on first load, and v1 backup files still import.
+
+## Development
 
 ```bash
-python -m http.server 8080
+npm test              # unit tests: engine, money, i18n, storage (node:test, no deps)
+npm run check         # syntax, references, zero third-party requests, CSP parity, SW stamp
+npm run stamp         # re-stamp sw.js after changing any shipped file (CI fails if stale)
+npm run smoke         # browser smoke + automated live checks (needs Playwright; axe optional)
+npm run assets        # regenerate icons, favicon, OG image and install screenshots
 ```
 
-No build step, no dependencies — the app is a single self-contained HTML file.
+`smoke` and `assets` use Playwright as a dev-only tool: `npm i -g playwright@1.56.1 axe-core@4.10.2`, then run with `PLAYWRIGHT_MODULE="$(npm root -g)/playwright" AXE_PATH="$(npm root -g)/axe-core/axe.min.js"`.
 
-## Project structure
+Enable the secrets hook once per clone: `git config core.hooksPath .githooks` (requires [gitleaks](https://github.com/gitleaks/gitleaks)).
 
-| File | Purpose |
-|---|---|
-| `index.html` | The deployed app (single file: logic, CSS, i18n) |
-| `debt-free-tracker.html` | Original source file, kept verbatim |
-| `manifest.json` | PWA manifest |
-| `sw.js` | Service worker — offline caching only |
-| `icon-192.png`, `icon-512.png`, `favicon.ico` | App icons |
-| `tools/make-icons.py` | Regenerates the icons locally (Pillow) |
+## Quality
 
----
+Latest evidence lives in [`checks/`](checks/README.md): 41 unit tests, a 32-step browser suite (accessibility scan, offline, update path, backup round-trip, XSS probe, CSP), Lighthouse **100** accessibility / best practices / SEO on mobile and desktop, and clean gitleaks scans. Real-device checks (iPhone safe-area, install on iOS/Android, WhatsApp preview) are listed there as pending.
+
+## Deploying
+
+Vercel static hosting, no build command. Headers (CSP, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, font caching) come from `vercel.json`. Preview deployments show console CSP warnings for the Vercel toolbar script; production is unaffected.
+
+## Credits
+
+- IBM Plex Sans Arabic — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`)
+- Lucide icons — ISC License
 
 Built by **X Star Software** — [@xstar.kw](https://www.instagram.com/xstar.kw)
