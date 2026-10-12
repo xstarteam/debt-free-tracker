@@ -7,7 +7,7 @@
  */
 
 // <precache>
-const VERSION = '2.1.0-40c7129dda';
+const VERSION = '2.1.0-ecc28ad12e';
 const PRECACHE = [
   '/',
   '/index.html',

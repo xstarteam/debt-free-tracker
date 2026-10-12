@@ -8,12 +8,14 @@ import {
 } from './money.js';
 import { translator, LANGS } from './i18n.js';
 import { openStore, sanitizeDebt, parseBackup, makeBackup, DEFAULT_SETTINGS, KINDS } from './store.js';
-import { encryptBackup, decryptBackup, isEncrypted, canEncrypt, MIN_PASSPHRASE } from './vault.js';
 import {
   h, s, put, icon, money, openSheet, confirmSheet, toast, initToasts, setUiStrings, celebrate, download,
 } from './ui.js';
 import { renderChart } from './chart.js';
-import { makeProgressCard, makeReminderICS } from './share.js';
+
+// Loaded on first use (story card, calendar file, encrypted backups): smaller first load.
+const lazy = {};
+const load = name => (lazy[name] ||= import(`./${name}.js`));
 
 const APP_URL = 'debt-free-tracker-phi.vercel.app';
 const KIND_ICONS = { card: 'card', personal: 'personal', car: 'car', home: 'home', bnpl: 'bnpl', family: 'family', other: 'other' };
@@ -1145,6 +1147,7 @@ async function openShareCard() {
   const tot = totals();
   const cur = state.plan.current;
   const done = tot.balance === 0;
+  const { makeProgressCard } = await load('share');
   const blob = await makeProgressCard({
     rtl: t.dir === 'rtl',
     appName: t.s.appName,
@@ -1205,6 +1208,7 @@ function openReminder() {
     focus: day,
   });
   btn.addEventListener('click', async () => {
+    const { makeReminderICS } = await load('share');
     const d = Number(day.value);
     await saveSettings({ remindDay: d });
     const lines = state.debts.filter(x => x.balanceFils > 0).map(x => `${x.name}: ${ms(x.minFils)}`);
@@ -1499,7 +1503,8 @@ function passphraseField(id, { hint = '', autocomplete = 'new-password' } = {}) 
 }
 
 /** Backup: plain JSON, or encrypted with a passphrase where Web Crypto exists. */
-function exportBackup() {
+async function exportBackup() {
+  const { canEncrypt, MIN_PASSPHRASE } = await load('vault');
   if (!canEncrypt()) {
     saveBackupFile(null);
     return;
@@ -1541,7 +1546,7 @@ function exportBackup() {
 
 async function saveBackupFile(passphrase) {
   let text = makeBackup(state.debts, state.settings);
-  if (passphrase) text = await encryptBackup(text, passphrase);
+  if (passphrase) text = await (await load('vault')).encryptBackup(text, passphrase);
   const day = new Date().toISOString().slice(0, 10);
   download(new Blob([text], { type: 'application/json' }), `debt-free-backup-${day}${passphrase ? '-encrypted' : ''}.json`);
   await saveSettings({ lastBackupAt: new Date().toISOString() });
@@ -1565,7 +1570,7 @@ function askPassphrase(file) {
     form.addEventListener('submit', async e => {
       e.preventDefault();
       openBtn.disabled = true;
-      const out = await decryptBackup(file, pass.input.value);
+      const out = await (await load('vault')).decryptBackup(file, pass.input.value);
       openBtn.disabled = false;
       if (out.ok) {
         plain = out.text;
@@ -1591,7 +1596,7 @@ async function importBackup(file) {
   try {
     data = JSON.parse(text);
   } catch { /* parseBackup reports it */ }
-  if (isEncrypted(data)) {
+  if ((await load('vault')).isEncrypted(data)) {
     text = await askPassphrase(data);
     if (text === null) return; // cancelled, or a damaged file (already reported)
   }
