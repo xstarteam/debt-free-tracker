@@ -1,0 +1,7 @@
+commit 0c5b3a4b6cdfedb2ab8c8b78c7087d56846be57d
+$ lighthouse http://127.0.0.1:8799/ [--preset=desktop] --only-categories=performance,accessibility,best-practices,seo   # Lighthouse 12.8.2
+# local python static server: no gzip/brotli and no cache headers (Vercel adds both)
+mobile: Performance 87 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 2.6 s · Largest Contentful Paint 3.5 s · Total Blocking Time 40 ms · Cumulative Layout Shift 0 · Speed Index 2.6 s
+desktop: Performance 100 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 0.5 s · Largest Contentful Paint 0.7 s · Total Blocking Time 0 ms · Cumulative Layout Shift 0.016 · Speed Index 0.5 s
