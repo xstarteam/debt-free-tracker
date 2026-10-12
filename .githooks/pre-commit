@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-commit guard (X Star Light P9). Enable once per clone:
+#   git config core.hooksPath .githooks
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is required (https://github.com/gitleaks/gitleaks/releases)." >&2
+  exit 1
+fi
+gitleaks protect --staged --redact --no-banner
+
+# Shipped files changed without re-stamping the service worker?
+if command -v node >/dev/null 2>&1; then
+  node tools/stamp-sw.mjs --check
+fi
