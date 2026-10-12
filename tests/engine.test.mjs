@@ -252,3 +252,18 @@ test('debt buyout compares total cost, term and installment', () => {
   assert.ok(long.offer.cost > r.offer.cost, 'longer term, more total cost');
   assert.equal(buyoutCompare([], { rate: 5, months: 12 }), null);
 });
+
+test('a month already partly paid: month 1 only asks for the rest', () => {
+  const full = simulate(sample(), { strategy: 'snowball', extra: KD(50) });
+  const after = sample().map(d => (d.id === 'card' ? { ...d, balance: d.balance - KD(60) } : d));
+  const paid = { card: KD(60) };
+  const part = simulate(after, { strategy: 'snowball', extra: KD(50), firstMonthPaid: paid });
+  assert.equal(part.timeline[0].paid, KD(615 - 60));
+  assert.equal(part.timeline[1].paid, KD(615));
+  assert.ok(part.months === full.months || part.months === full.months - 1, `${part.months} vs ${full.months}`);
+  assert.deepEqual(monthAllocation(after, { strategy: 'snowball', extra: KD(50), firstMonthPaid: paid }),
+    { tabby: KD(125), car: KD(180), personal: KD(250) });
+  // paying more than a minimum early leaves nothing due on it this month
+  const over = monthAllocation(sample(), { strategy: 'snowball', firstMonthPaid: { car: KD(500) } });
+  assert.equal(over.car, undefined);
+});

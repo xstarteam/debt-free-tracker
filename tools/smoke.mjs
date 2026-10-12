@@ -6,10 +6,12 @@
  *
  * Covers: first run, sample data, add/validate/edit, Arabic-digit input,
  * payments + undo, payoff celebration, delete + undo, payment removal,
- * language/theme, persistence, export -> wipe -> import round-trip, corrupt
- * backup resilience, XSS probe, never-ending plan + fix, lump sum, DTI,
+ * language/theme, persistence, export -> wipe -> import round-trip (plain and
+ * encrypted), corrupt backup resilience, XSS probe, never-ending plan + fix,
+ * lump sum (one-off and yearly), DTI, daily cost, monthly check-in + undo,
+ * goal tracking, custom order, contract helper, debt buyout calculator,
  * share card, calendar reminder, keyboard chart, CSP violations, axe scan,
- * offline (airplane mode) and the update path (deploy twice).
+ * offline (airplane mode) and the update path.
  *
  * Dev-only dependencies: Playwright (PLAYWRIGHT_MODULE) and optionally
  * axe-core (AXE_PATH -> axe.min.js) for the accessibility scan.
@@ -35,7 +37,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 let swSuffix = '';
 const server = createServer(async (req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]);
-  if (p === '/') p = '/index.html';
+  if (p.endsWith('/')) p += 'index.html';
   if (p === '/__axe.js' && axeSource) {
     res.writeHead(200, { 'content-type': 'text/javascript' });
     res.end(axeSource);
@@ -130,6 +132,18 @@ await check('sample data renders plan, 5 debts, chart, schedule', async () => {
   assert((await page.$$('.schedule tbody tr')).length > 5, 'schedule rows missing');
   return `${await text(page, '.hero-figure')} · ${await text(page, '.hero-sub')}`;
 });
+await check('hero shows what the debts cost per day', async () => {
+  const cost = await text(page, '.hero-cost');
+  assert(/3\.297/.test(cost) && /باليوم/.test(cost), cost);
+  return cost;
+});
+await check('check-in card: plan for this month, streak and an on-track goal', async () => {
+  const card = await page.$eval('#checkin', el => el.innerText);
+  assert(/615\.000/.test(card), `card: ${card}`);
+  assert(/سلسلة الالتزام/.test(card), 'streak missing');
+  assert(/ماشي على هدفك/.test(card), 'goal not on track');
+  return card.replace(/\s+/g, ' ').slice(0, 120);
+});
 await check('digits are Latin everywhere (no ١٢٣ mixed with 123)', async () => {
   const body = await page.evaluate(() => document.body.innerText);
   assert(!/[٠-٩]/.test(body), 'Arabic-Indic digits found');
@@ -156,12 +170,22 @@ await check('extra payment slider updates the plan live with savings', async () 
   assert(/توفّر/.test(impact), `impact: ${impact}`);
   return `${before} → ${after} · ${impact}`;
 });
-await check('lump sum adds to the impact', async () => {
+await check('a bigger extra payment puts you ahead of your goal', async () => {
+  const goal = await text(page, '.goal');
+  assert(/متقدم/.test(goal), goal);
+  return goal;
+});
+await check('lump sum adds to the impact; a yearly bonus moves the date further', async () => {
   await page.click('.lump-add');
   await page.fill('#lump-amount', '1000');
   await page.dispatchEvent('#lump-amount', 'change');
   await settle(page, 400);
-  return text(page, '.impact');
+  const once = await text(page, '.hero-figure');
+  await page.click('label[for="lump-repeat"]');
+  await settle(page, 400);
+  const yearly = await text(page, '.hero-figure');
+  assert(once !== yearly, `yearly bonus did not change the date (${once})`);
+  return `${await text(page, '.impact')} · once ${once} → yearly ${yearly}`;
 });
 await check('salary enables the debt-to-income meter', async () => {
   await page.fill('#salary-input', '1500');
@@ -327,7 +351,9 @@ await shot(page, '07-desktop-light');
 await check('a11y: populated (ar, light, desktop)', () => axe(page, 'desktop-light'));
 let backupPath = null;
 await check('export → wipe → import round-trip', async () => {
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#data .btn-soft')]);
+  await page.click('#data .btn-soft');
+  await page.waitForSelector('dialog[open] #bk-encrypt');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('dialog[open] button[type="submit"]')]);
   backupPath = await dl.path();
   const json = JSON.parse(await readFile(backupPath, 'utf8'));
   assert(json.version === 2 && json.debts.length === 5, 'bad backup');
@@ -342,6 +368,33 @@ await check('export → wipe → import round-trip', async () => {
   await page.waitForTimeout(500);
   assert((await page.$$('.debt-card')).length === 5, 'not restored');
   return `${dl.suggestedFilename()} (v2, 5 debts)`;
+});
+await check('encrypted backup: unreadable file, wrong passphrase refused, right one restores', async () => {
+  await page.click('#data .btn-soft');
+  await page.waitForSelector('dialog[open] #bk-encrypt');
+  await page.click('dialog[open] label[for="bk-encrypt"]');
+  await page.fill('#bk-pass', 'short');
+  await page.click('dialog[open] button[type="submit"]');
+  await page.waitForTimeout(150);
+  assert(await page.isVisible('#bk-pass-err'), 'short passphrase accepted');
+  await page.fill('#bk-pass', 'سر-الديون-2026');
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 15000 }), page.click('dialog[open] button[type="submit"]')]);
+  const file = await readFile(await dl.path(), 'utf8');
+  const json = JSON.parse(file);
+  assert(json.encrypted === true && !file.includes('قرض') && !/balanceFils/.test(file), 'backup not encrypted');
+  await page.waitForTimeout(300);
+  await page.setInputFiles('#import-file', { name: dl.suggestedFilename(), mimeType: 'application/json', buffer: Buffer.from(file) });
+  await page.waitForSelector('dialog[open] #rs-pass');
+  await page.fill('#rs-pass', 'wrong passphrase');
+  await page.click('dialog[open] button[type="submit"]');
+  await page.waitForSelector('#rs-pass-err:not([hidden])', { timeout: 15000 });
+  await page.fill('#rs-pass', 'سر-الديون-2026');
+  await page.click('dialog[open] button[type="submit"]');
+  await page.waitForSelector(`${TOP} .btn-primary:has-text("استعادة")`, { timeout: 15000 });
+  await page.click(`${TOP} .btn-primary`);
+  await page.waitForTimeout(500);
+  assert((await page.$$('.debt-card')).length === 5, 'not restored');
+  return `${dl.suggestedFilename()} → wrong passphrase refused → restored 5 debts`;
 });
 await check('corrupt backup is rejected and the app keeps working after reload', async () => {
   await page.setInputFiles('#import-file', { name: 'evil.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, settings: { lang: 'fr' }, debts: [{ nope: 1 }] })) });
@@ -360,6 +413,94 @@ await check('corrupt backup is rejected and the app keeps working after reload',
 });
 await ctx.close();
 
+/* ---------- 5b. v2.1 planning tools ---------- */
+({ ctx, page } = await open());
+await page.goto(BASE);
+await settle(page);
+await page.click('.hero-ctas .btn-hero-ghost');
+await settle(page, 400);
+await check('monthly check-in logs every planned payment at once; the plan date holds; undo restores', async () => {
+  const before = await text(page, '.hero-figure');
+  await page.click('[data-fk="checkin"]');
+  await page.waitForSelector('dialog[open] .ci-row');
+  const rows = (await page.$$('dialog[open] .ci-row')).length;
+  assert(rows === 5, `rows ${rows}`);
+  await shot(page, '11-checkin', false);
+  await page.click('dialog[open] button[type="submit"]');
+  await page.waitForTimeout(500);
+  const toastText = await lastToast(page);
+  assert(/تم تسجيل 5 دفعات/.test(toastText), `toast: ${toastText}`);
+  const card = await page.$eval('#checkin', el => el.innerText);
+  assert(/سجّلت دفعات هالشهر/.test(card), `card: ${card}`);
+  const after = await text(page, '.hero-figure');
+  assert(after === before, `freedom date moved ${before} → ${after}`);
+  await page.click('.toast-action');
+  await page.waitForTimeout(500);
+  assert(/سجّل دفعات الشهر/.test(await page.$eval('#checkin', el => el.innerText)), 'undo failed');
+  return `${toastText} · date stays ${after} · undo ok`;
+});
+await check('a11y: check-in sheet open', async () => {
+  await page.click('[data-fk="checkin"]');
+  await page.waitForSelector('dialog[open] .ci-row');
+  const r = await axe(page, 'checkin-sheet');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  return r;
+});
+await check('custom order: arrows reorder debts, focus follows, plan uses the new order', async () => {
+  await page.click('.strat-custom');
+  await settle(page, 400);
+  const names = () => page.$$eval('.debt-card h3', n => n.map(e => e.textContent));
+  const before = await names();
+  const ups = await page.$$('.debt-card [data-fk^="up-"]');
+  await ups[ups.length - 1].click();
+  await settle(page, 300);
+  const after = await names();
+  assert(after[after.length - 2] === before[before.length - 1], `order ${after.join(' > ')}`);
+  const fk = await page.evaluate(() => document.activeElement.dataset.fk || '');
+  assert(fk.startsWith('up-'), `focus on ${fk}`);
+  assert((await page.$$('#chart .chart-path')).length === 3, 'custom series missing from chart');
+  await page.click('.strat-snowball');
+  await settle(page, 300);
+  return after.join(' > ');
+});
+await check('contract helper: 4% flat over 60 months, 12 paid → balance, payment and real rate', async () => {
+  await page.click('[data-fk="add-debt"]');
+  await page.waitForSelector('dialog[open] .contract-toggle');
+  await page.click('.contract-toggle');
+  await page.fill('#c-principal', '10000');
+  await page.fill('#c-rate', '4');
+  await page.fill('#c-months', '60');
+  await page.fill('#c-paid', '12');
+  await page.waitForTimeout(150);
+  const note = await text(page, '.contract-result');
+  await shot(page, '12-contract', false);
+  await page.click('.contract .btn-soft');
+  const vals = await page.evaluate(() => ['f-balance', 'f-min', 'f-rate', 'f-original'].map(id => document.getElementById(id).value));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  assert(vals.join('|') === '8284.445|200|7.42|10000', `fields ${vals.join('|')}`);
+  assert(/7\.42%/.test(note), note);
+  return `${vals.join(' | ')} · ${note.replace(/\s+/g, ' ').slice(0, 70)}`;
+});
+await check('debt buyout: a long cheap loan costs more, a short one saves', async () => {
+  await page.click('[data-fk="tool-buyout"]');
+  await page.waitForSelector('dialog[open] .bo-verdict');
+  await page.fill('#bo-months', '120');
+  await page.waitForTimeout(150);
+  const long = await text(page, '.bo-verdict');
+  await page.fill('#bo-months', '36');
+  await page.waitForTimeout(150);
+  const short = await text(page, '.bo-verdict');
+  assert(/يكلّفك/.test(long) && /يوفّر/.test(short), `${long} / ${short}`);
+  await shot(page, '13-buyout', false);
+  const r = await axe(page, 'buyout-sheet');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  return `120 months: ${long.slice(0, 40)}… · 36 months: ${short.slice(0, 40)}… · a11y ${r}`;
+});
+await ctx.close();
+
 /* ---------- 6. never-ending plan, reminder, share card ---------- */
 ({ ctx, page } = await open({ downloads: true }));
 await page.goto(BASE);
@@ -371,7 +512,7 @@ await check('never-ending plan: clear warning, no absurd numbers, one-tap fix', 
   await page.fill('#f-balance', '10000');
   await page.fill('#f-min', '50');
   await page.fill('#f-rate', '24');
-  const preview = await text(page, '.form-preview');
+  const preview = await text(page, 'dialog[open] p.form-preview[aria-live]');
   await page.click('dialog[open] button[type="submit"]');
   await page.waitForTimeout(400);
   const fig = await text(page, '.hero-figure');

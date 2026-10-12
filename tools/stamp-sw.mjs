@@ -12,7 +12,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 /** Everything the app needs to run offline. Screenshots / OG image are not runtime. */
 export async function runtimeFiles() {

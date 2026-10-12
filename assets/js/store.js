@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   remindDay: 25,
   goalMonth: '',
   goalSetAt: '',
+  coveredMonth: '',
 });
 
 const ENUMS = {
@@ -70,7 +71,7 @@ export function sanitizeSettings(raw, base = DEFAULT_SETTINGS) {
       if (f !== null) out[key] = f;
     } else if (key === 'rollover' || key === 'demo' || key === 'lumpRepeat') {
       if (typeof v === 'boolean') out[key] = v;
-    } else if (key === 'lumpMonth' || key === 'goalMonth') {
+    } else if (key === 'lumpMonth' || key === 'goalMonth' || key === 'coveredMonth') {
       if (v === '' || MONTH_KEY.test(v)) out[key] = v;
     } else if (key === 'lastBackupAt' || key === 'goalSetAt') {
       out[key] = v ? isoOr(v, '') : '';

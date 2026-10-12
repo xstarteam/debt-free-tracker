@@ -124,3 +124,15 @@ test('debt priority survives sanitising and backups; junk is dropped', () => {
   assert.equal(round.debts[0].priority, 3);
   assert.equal(round.settings.strategy, 'custom');
 });
+
+test('Arabic and English carry the same keys (no missing copy in either language)', () => {
+  const keysOf = obj => Object.keys(obj).sort();
+  const ar = translator('ar');
+  const en = translator('en');
+  assert.deepEqual(keysOf(ar.s), keysOf(en.s));
+  assert.deepEqual(keysOf(ar.s.errors), keysOf(en.s.errors));
+  for (const terms of ['interest', 'profit']) {
+    assert.deepEqual(keysOf(translator('ar', terms).term), keysOf(translator('en', terms).term));
+  }
+  assert.equal(ar.s.guides.length, en.s.guides.length);
+});

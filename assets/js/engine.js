@@ -58,8 +58,11 @@ function lumpAt(lump, m) {
   return lump.every && m > lump.month && (m - lump.month) % lump.every === 0 ? lump.amount : 0;
 }
 
-/** Minimums first, then everything left to debts in strategy order. */
-function payMonth(open, budget, byId) {
+/**
+ * Minimums first, then everything left to debts in strategy order.
+ * `already` = amounts paid earlier this month: they count toward each minimum.
+ */
+function payMonth(open, budget, byId, already) {
   let paid = 0;
   const pay = (d, p) => {
     d.balance -= p;
@@ -67,12 +70,29 @@ function payMonth(open, budget, byId) {
     budget -= p;
     if (byId) byId[d.id] = (byId[d.id] || 0) + p;
   };
-  for (const d of open) pay(d, Math.min(d.minPayment, d.balance, budget));
+  for (const d of open) {
+    const due = Math.max(0, d.minPayment - ((already && already[d.id]) || 0));
+    pay(d, Math.min(due, d.balance, budget));
+  }
   for (const d of open) {
     if (budget <= 0) break;
     pay(d, Math.min(budget, d.balance));
   }
   return paid;
+}
+
+function normalizePaid(firstMonthPaid) {
+  if (!firstMonthPaid) return null;
+  const out = {};
+  let total = 0;
+  for (const [id, v] of Object.entries(firstMonthPaid)) {
+    const f = Math.max(0, Math.round(+v || 0));
+    if (f) {
+      out[id] = f;
+      total += f;
+    }
+  }
+  return total ? { byId: out, total } : null;
 }
 
 function accrue(open) {
@@ -95,7 +115,9 @@ function accrue(open) {
  * @param {number}  [opts.extra=0]        extra monthly payment, fils
  * @param {boolean} [opts.rollover=true]  roll cleared minimums forward
  * @param {{month:number, amount:number, every?:number}|null} [opts.lumpSum]
- *        payment in month N (1 = next month), repeating every `every` months when set
+ *        payment in plan month N, repeating every `every` months when set
+ * @param {Object<string, number>} [opts.firstMonthPaid]  fils already paid per debt in
+ *        month 1 (a month in progress): month 1 only asks for the rest of the budget
  * @param {number}  [opts.maxMonths=MAX_MONTHS]
  */
 export function simulate(debts, opts = {}) {
@@ -103,6 +125,7 @@ export function simulate(debts, opts = {}) {
   const extra = Math.max(0, Math.round(+opts.extra || 0));
   const rollover = opts.rollover !== false;
   const lump = normalizeLump(opts.lumpSum);
+  const already = normalizePaid(opts.firstMonthPaid);
   const maxMonths = opts.maxMonths || MAX_MONTHS;
 
   const all = normalize(debts);
@@ -131,8 +154,9 @@ export function simulate(debts, opts = {}) {
   for (let m = 1; m <= maxMonths; m++) {
     const open = all.filter(d => d.balance > 0).sort(byStrategy);
     const interest = accrue(open);
-    const budget = (rollover ? committed : sumOf(open, 'minPayment')) + extra + lumpAt(lump, m);
-    const paid = payMonth(open, budget);
+    const first = m === 1 && already;
+    const budget = (rollover ? committed : sumOf(open, 'minPayment')) + extra + lumpAt(lump, m) - (first ? already.total : 0);
+    const paid = payMonth(open, Math.max(0, budget), null, first ? already.byId : null);
 
     const events = [];
     for (const d of open) {
@@ -164,19 +188,21 @@ export function simulate(debts, opts = {}) {
 }
 
 /**
- * What the plan pays each debt next month (month 1): the amounts a monthly
- * check-in pre-fills. Returns { [id]: fils } for debts that receive money.
+ * What the plan pays each debt in month 1: the amounts a monthly check-in
+ * pre-fills (net of anything in `firstMonthPaid`). Returns { [id]: fils }.
  */
 export function monthAllocation(debts, opts = {}) {
   const strategy = strategyOf(opts.strategy);
   const extra = Math.max(0, Math.round(+opts.extra || 0));
   const rollover = opts.rollover !== false;
+  const already = normalizePaid(opts.firstMonthPaid);
   const all = normalize(debts);
   const open = all.filter(d => d.balance > 0).sort(comparator(strategy));
   accrue(open);
-  const budget = (rollover ? sumOf(all, 'minPayment') : sumOf(open, 'minPayment')) + extra + lumpAt(normalizeLump(opts.lumpSum), 1);
+  const budget = (rollover ? sumOf(all, 'minPayment') : sumOf(open, 'minPayment')) + extra
+    + lumpAt(normalizeLump(opts.lumpSum), 1) - (already ? already.total : 0);
   const byId = {};
-  payMonth(open, budget, byId);
+  payMonth(open, Math.max(0, budget), byId, already ? already.byId : null);
   for (const id of Object.keys(byId)) if (!byId[id]) delete byId[id];
   return byId;
 }
@@ -238,6 +264,7 @@ export function buildPlan(debts, settings = {}) {
     extra: settings.extra || 0,
     rollover: settings.rollover !== false,
     lumpSum: settings.lumpSum || null,
+    firstMonthPaid: settings.firstMonthPaid || null,
   };
   const selected = strategyOf(settings.strategy);
   const snowball = simulate(debts, { ...base, strategy: 'snowball' });
@@ -246,7 +273,7 @@ export function buildPlan(debts, settings = {}) {
   const current = { snowball, avalanche, custom }[selected];
   const hasBoost = base.extra > 0 || !!(base.lumpSum && base.lumpSum.amount > 0);
   const baseline = hasBoost
-    ? simulate(debts, { rollover: base.rollover, strategy: selected })
+    ? simulate(debts, { rollover: base.rollover, strategy: selected, firstMonthPaid: base.firstMonthPaid })
     : current;
   const never = current.status === 'never';
   return {

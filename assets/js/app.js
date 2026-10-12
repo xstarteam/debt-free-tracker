@@ -1,10 +1,14 @@
 /* Debt Free — application shell: state, rendering and interactions. */
-import { buildPlan, simulate, monthDate, monthKey, monthOffset, targetId } from './engine.js';
 import {
-  CURRENCIES, parseAmount, parseRate, formatMoney, formatCompact, toInputValue, formatRate, localeFor,
+  buildPlan, simulate, monthDate, monthKey, monthOffset, targetId, payoffOrder, monthAllocation, dailyCost,
+  contractTerms, buyoutCompare,
+} from './engine.js';
+import {
+  CURRENCIES, parseAmount, parseRate, formatMoney, formatCompact, toInputValue, formatRate, localeFor, normalizeDigits,
 } from './money.js';
 import { translator, LANGS } from './i18n.js';
 import { openStore, sanitizeDebt, parseBackup, makeBackup, DEFAULT_SETTINGS, KINDS } from './store.js';
+import { encryptBackup, decryptBackup, isEncrypted, canEncrypt, MIN_PASSPHRASE } from './vault.js';
 import {
   h, s, put, icon, money, openSheet, confirmSheet, toast, initToasts, setUiStrings, celebrate, download,
 } from './ui.js';
@@ -13,6 +17,8 @@ import { makeProgressCard, makeReminderICS } from './share.js';
 
 const APP_URL = 'debt-free-tracker-phi.vercel.app';
 const KIND_ICONS = { card: 'card', personal: 'personal', car: 'car', home: 'home', bnpl: 'bnpl', family: 'family', other: 'other' };
+const GUIDES = ['guides/snowball-vs-avalanche.html', 'guides/flat-vs-reducing-rate.html', 'guides/debt-buyout.html'];
+const MAX_BACKUP_BYTES = 6_000_000;
 
 const state = {
   store: null,
@@ -24,6 +30,8 @@ const state = {
   printing: false,
   lumpOpen: false,
   installPrompt: null,
+  startOffset: 1, // 0: the plan starts this month (its payments aren't logged yet), 1: next month
+  month: null,    // this month's logged vs planned payments
 };
 
 let t = translator('ar');
@@ -37,30 +45,82 @@ const monthYear = d => dtf({ month: 'long', year: 'numeric' }).format(d);
 // full year on purpose: "29 مايو" / "May 29" would read as a day of the month
 const monthShort = d => dtf({ month: 'short', year: 'numeric' }).format(d);
 const dayDate = d => dtf({ day: 'numeric', month: 'long', year: 'numeric' }).format(d);
-const planDate = m => monthDate(state.now, m);
+const planDate = m => monthDate(state.now, m - 1 + state.startOffset);
+// calendar months from now until plan month m (0 = it falls in this month)
+const monthsUntil = m => Math.max(0, m - 1 + state.startOffset);
+const untilText = m => (monthsUntil(m) ? t.s.heroIn(t.duration(monthsUntil(m))) : t.s.heroThisMonth);
+const monthIndex = d => d.getFullYear() * 12 + d.getMonth();
+const indexDate = i => new Date(Math.floor(i / 12), i % 12, 1);
+const indexKey = i => `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
+const keyIndex = key => {
+  const m = /^(\d{4})-(\d{2})$/.exec(key || '');
+  return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
+};
+const currencySymbol = () => (CURRENCIES[state.settings.currency] || CURRENCIES.KWD)[t.lang];
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ------------------------------------------------------------------ */
 /* derived data                                                        */
 /* ------------------------------------------------------------------ */
 
-const engineDebts = () => state.debts.map(d => ({ id: d.id, balance: d.balanceFils, minPayment: d.minFils, rate: d.rate }));
+const engineDebts = () => state.debts.map(d => ({
+  id: d.id, balance: d.balanceFils, minPayment: d.minFils, rate: d.rate, priority: d.priority,
+}));
 
 function lumpSum() {
-  const { lumpFils, lumpMonth } = state.settings;
+  const { lumpFils, lumpMonth, lumpRepeat } = state.settings;
   if (!lumpFils || !lumpMonth) return null;
-  const month = monthOffset(state.now, lumpMonth);
-  return month >= 1 ? { month, amount: lumpFils } : null;
+  const offset = monthOffset(state.now, lumpMonth); // calendar months from now, next month = 1
+  if (offset < 1) return null;
+  return { month: offset + 1 - state.startOffset, amount: lumpFils, every: lumpRepeat ? 12 : 0 };
+}
+
+/** Payments logged in the current calendar month, per debt and in total. */
+function paidThisMonth() {
+  const now = monthIndex(state.now);
+  const byId = {};
+  let total = 0;
+  for (const d of state.debts) {
+    for (const p of d.payments) {
+      if (monthIndex(new Date(p.at)) !== now) continue;
+      byId[d.id] = (byId[d.id] || 0) + p.fils;
+      total += p.fils;
+    }
+  }
+  return { byId, total };
+}
+
+/**
+ * Is this month's payment done? Logged payments that reach the monthly budget
+ * (minimums + extra), or the user saying their balances already include it.
+ * Until then the plan starts this month and only asks for what's left.
+ */
+function monthStatus() {
+  const paid = paidThisMonth();
+  const open = state.debts.filter(d => d.balanceFils > 0);
+  const budget = (state.settings.rollover ? state.debts : open).reduce((a, d) => a + d.minFils, 0) + state.settings.extraFils;
+  const planned = Math.min(budget, paid.total + open.reduce((a, d) => a + d.balanceFils, 0));
+  const marked = state.settings.coveredMonth === monthKey(state.now, 0);
+  return { paid, planned, marked, covered: marked || (planned > 0 && paid.total >= planned) };
 }
 
 function recompute() {
   state.now = new Date();
+  state.month = monthStatus();
+  state.startOffset = state.month.covered ? 1 : 0;
   state.plan = buildPlan(engineDebts(), {
     strategy: state.settings.strategy,
     extra: state.settings.extraFils,
     rollover: state.settings.rollover,
     lumpSum: lumpSum(),
+    firstMonthPaid: state.month.covered ? null : state.month.paid.byId,
   });
+}
+
+/** Freedom month (absolute month index) on the current plan, or null. */
+function projectedEnd() {
+  const cur = state.plan.current;
+  return cur.status === 'ok' ? monthIndex(planDate(cur.months)) : null;
 }
 
 function totals() {
@@ -72,7 +132,7 @@ function totals() {
   return { open, balance, original, pct, minimums, all: state.debts.length };
 }
 
-const strategyName = key => (key === 'avalanche' ? t.s.avalanche : t.s.snowball);
+const strategyName = key => ({ avalanche: t.s.avalanche, custom: t.s.custom }[key] || t.s.snowball);
 const kindLabel = kind => t.s.kinds[kind] || t.s.kinds.other;
 
 /* ------------------------------------------------------------------ */
@@ -201,8 +261,9 @@ function renderHero() {
     tone = 'is-never';
   } else {
     figure = monthYear(planDate(cur.months));
-    sub = `${t.s.heroIn(t.duration(cur.months))} · ${t.s.heroPayments(cur.months)}`;
+    sub = `${untilText(cur.months)} · ${t.s.heroPayments(cur.months)}`;
   }
+  const daily = tone === 'is-done' ? 0 : dailyCost(engineDebts());
 
   const stats = h('dl', { class: 'hero-stats' },
     stat(t.s.statRemaining, M(tot.balance)),
@@ -215,7 +276,8 @@ function renderHero() {
       h('div', { class: 'hero-main' },
         h('p', { class: 'eyebrow' }, icon(tone === 'is-done' ? 'party' : 'flag', { size: 16 }), h('span', { text: t.s.heroEyebrow })),
         h('p', { class: 'hero-figure', text: figure }),
-        h('p', { class: 'hero-sub', text: sub })),
+        h('p', { class: 'hero-sub', text: sub }),
+        daily > 0 ? h('p', { class: 'hero-cost' }, icon('flame', { size: 16 }), h('span', { text: t.s.dailyCost(ms(daily)) })) : null),
       progressRing(tot.pct)),
     stats,
   );
@@ -260,6 +322,190 @@ function methodCard(key, ic, title, text) {
 }
 
 /* ------------------------------------------------------------------ */
+/* monthly check-in, streak and goal                                   */
+/* ------------------------------------------------------------------ */
+
+/** Consecutive months with logged payments, ending this month or last. */
+function streak() {
+  const months = new Set();
+  for (const d of state.debts) for (const p of d.payments) months.add(monthIndex(new Date(p.at)));
+  const marked = keyIndex(state.settings.coveredMonth);
+  if (marked !== null) months.add(marked);
+  let i = monthIndex(state.now);
+  if (!months.has(i)) i -= 1;
+  let n = 0;
+  while (months.has(i) && n < 600) {
+    n += 1;
+    i -= 1;
+  }
+  return n;
+}
+
+async function setGoal(index) {
+  await saveSettings({ goalMonth: indexKey(index), goalSetAt: new Date().toISOString() });
+  render();
+  toast(t.s.toastGoal);
+}
+
+function goalLine() {
+  const end = projectedEnd();
+  if (end === null) return null;
+  const goal = keyIndex(state.settings.goalMonth);
+  if (goal === null) {
+    return h('button', { type: 'button', class: 'link-btn', 'data-fk': 'goal-set', onclick: () => setGoal(end) },
+      icon('target', { size: 16 }), h('span', { text: t.s.goalSetCta(monthYear(indexDate(end))) }));
+  }
+  const diff = goal - end;
+  const level = diff >= 0 ? 'ok' : 'warn';
+  const text = diff > 0 ? t.s.goalAhead(t.duration(diff)) : diff < 0 ? t.s.goalBehind(t.duration(-diff)) : t.s.goalOnTrack;
+  return h('div', { class: 'goal' },
+    h('span', { class: `status status-${level}` }, icon(diff >= 0 ? 'trendingDown' : 'alert', { size: 14 }), text),
+    h('span', { class: 'goal-date', text: t.s.goalLabel(monthYear(indexDate(goal))) }),
+    diff !== 0 ? h('button', { type: 'button', class: 'link-btn', 'data-fk': 'goal-reset', onclick: () => setGoal(end), text: t.s.goalReset }) : null);
+}
+
+function renderCheckin() {
+  const el = $('checkin');
+  const open = state.debts.filter(d => d.balanceFils > 0);
+  el.hidden = !open.length;
+  if (!open.length) return;
+  const { paid, planned, covered, marked } = state.month;
+  const now = monthIndex(state.now);
+  const fresh = !paid.total && open.every(d => monthIndex(new Date(d.createdAt)) === now);
+  let sub;
+  if (covered) sub = marked && !paid.total ? t.s.checkinCoveredDone : t.s.checkinDone;
+  else if (paid.total) sub = t.s.checkinProgress(ms(paid.total), ms(planned));
+  else sub = t.s.checkinPlanned(ms(planned), open.length);
+  const pct = planned ? Math.min(100, Math.floor((paid.total / planned) * 100)) : 0;
+  const bar = paid.total && !marked
+    ? h('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct), 'aria-label': sub }, h('i'))
+    : null;
+  if (bar) bar.firstChild.style.setProperty('--p', `${pct}%`);
+  const n = streak();
+  put(el,
+    h('div', { class: 'checkin-main' },
+      h('span', { class: `chip-icon${covered ? ' chip-done' : ''}` }, icon(covered ? 'checkCircle' : 'calendarCheck')),
+      h('div', { class: 'checkin-text' },
+        h('h2', { id: 'checkin-title', text: t.s.checkinTitle(monthYear(state.now)) }),
+        h('p', { class: 'card-sub', text: covered ? sub : `${sub} · ${t.s.checkinAsk}` })),
+      covered ? null : h('div', { class: 'checkin-actions' },
+        h('button', { type: 'button', class: 'btn btn-primary', 'data-fk': 'checkin', onclick: openCheckin },
+          icon('calendarCheck', { size: 18 }), h('span', { text: paid.total ? t.s.checkinRest : t.s.checkinBtn })),
+        fresh ? h('button', { type: 'button', class: 'link-btn', 'data-fk': 'checkin-covered', onclick: markCovered, text: t.s.checkinCovered }) : null)),
+    bar,
+    h('div', { class: 'checkin-meta' },
+      n >= 2 ? h('span', { class: 'streak' }, icon('trophy', { size: 15 }), h('span', { text: t.s.streak(n) })) : null,
+      goalLine()),
+  );
+}
+
+async function markCovered() {
+  await saveSettings({ coveredMonth: monthKey(state.now, 0) });
+  render();
+}
+
+/** Log every planned payment for this month in one sheet (one undo). */
+function openCheckin() {
+  const alloc = monthAllocation(engineDebts(), {
+    strategy: state.settings.strategy,
+    extra: state.settings.extraFils,
+    rollover: state.settings.rollover,
+    firstMonthPaid: state.month.paid.byId,
+  });
+  const rank = new Map(payoffOrder(engineDebts(), state.settings.strategy).map((id, i) => [id, i]));
+  const open = state.debts.filter(d => d.balanceFils > 0).sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
+  const rows = open.map(d => {
+    const id = `ci-${d.id}`;
+    const input = h('input', {
+      type: 'text', id, inputmode: 'decimal', autocomplete: 'off', dir: 'ltr', class: 'input', enterkeyhint: 'next',
+      value: toInputValue(Math.min(alloc[d.id] || 0, d.balanceFils)),
+    });
+    const err = h('p', { class: 'field-error', id: `${id}-err`, hidden: true });
+    const row = h('li', { class: 'ci-row' },
+      h('span', { class: `kind-chip kind-${d.kind} is-sm` }, icon(KIND_ICONS[d.kind] || 'other', { size: 16 })),
+      h('label', { class: 'ci-name', for: id }, h('b', { text: d.name }), h('small', {}, h('span', { text: `${t.s.payBalance}: ` }), M(d.balanceFils))),
+      h('div', { class: 'input-group ci-input' }, input, h('span', { class: 'suffix', text: currencySymbol() })),
+      err);
+    return { d, input, err, row };
+  });
+  const total = h('p', { class: 'ci-total', 'aria-live': 'polite' });
+  const read = () => rows.map(r => ({ r, v: parseAmount(r.input.value, { decimals: decimals() }) }));
+  const update = () => {
+    const sum = read().reduce((a, { r, v }) => a + (v.ok ? Math.min(v.fils, r.d.balanceFils) : 0), 0);
+    put(total, h('span', { text: `${t.s.checkinTotal}: ` }), M(sum));
+  };
+  rows.forEach(r => r.input.addEventListener('input', () => {
+    showFieldError(r.input, r.err, '');
+    update();
+  }));
+  update();
+  const formId = 'checkin-form';
+  const form = h('form', { id: formId, class: 'form', novalidate: true },
+    h('p', { class: 'hint', text: t.s.checkinSheetHint }),
+    h('ul', { class: 'ci-list' }, rows.map(r => r.row)),
+    total);
+  const confirm = h('button', { type: 'submit', form: formId, class: 'btn btn-primary' }, icon('check'), h('span', { text: t.s.checkinConfirm }));
+  const cancel = h('button', { type: 'button', class: 'btn btn-ghost', text: t.s.cancel });
+  const sheet = openSheet({ title: t.s.checkinTitle(monthYear(state.now)), content: form, actions: [confirm, cancel], focus: rows.length ? rows[0].input : cancel });
+  cancel.addEventListener('click', () => sheet.close());
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const pays = [];
+    let firstBad = null;
+    for (const { r, v } of read()) {
+      if (!v.ok && v.error !== 'empty') {
+        showFieldError(r.input, r.err, errorText(v.error));
+        firstBad = firstBad || r.input;
+      } else if (v.ok && v.fils > 0) {
+        pays.push({ d: r.d, fils: Math.min(v.fils, r.d.balanceFils) });
+      }
+    }
+    if (firstBad) {
+      firstBad.focus();
+      return;
+    }
+    if (!pays.length) {
+      toast(t.s.checkinNothing);
+      return;
+    }
+    const before = pays.map(({ d }) => ({ d, snap: { balanceFils: d.balanceFils, paidAt: d.paidAt, payments: d.payments.slice() } }));
+    const at = new Date().toISOString();
+    const stamp = Date.now().toString(36);
+    pays.forEach(({ d, fils }, i) => {
+      d.balanceFils -= fils;
+      d.payments.push({ id: `p${stamp}${i}`, at, fils });
+      if (d.balanceFils === 0) d.paidAt = at;
+    });
+    try {
+      await state.store.putDebts(pays.map(x => x.d));
+    } catch {
+      before.forEach(({ d, snap }) => Object.assign(d, snap));
+      toast(t.s.toastSaveErr, { tone: 'danger' });
+      return;
+    }
+    sheet.close();
+    render();
+    const cleared = pays.some(x => x.d.balanceFils === 0);
+    const allDone = state.debts.every(x => x.balanceFils === 0);
+    if (cleared) celebrate($('confetti'), { big: allDone });
+    const sum = pays.reduce((a, x) => a + x.fils, 0);
+    toast(allDone ? t.s.celebrateAll : t.s.toastCheckin(pays.length, ms(sum)), {
+      tone: cleared ? 'success' : '',
+      action: t.s.undo,
+      onAction: async () => {
+        before.forEach(({ d, snap }) => Object.assign(d, snap));
+        try {
+          await state.store.putDebts(before.map(b => b.d));
+        } catch {
+          toast(t.s.toastSaveErr, { tone: 'danger' });
+        }
+        render();
+      },
+    });
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* plan card (built once, updated in place so inputs keep focus)       */
 /* ------------------------------------------------------------------ */
 
@@ -271,7 +517,7 @@ function buildPlanCard() {
   plan.strategyLabel = h('p', { class: 'field-label', id: 'strategy-label' });
   plan.options = {};
   const group = h('div', { class: 'strategy', role: 'radiogroup', 'aria-labelledby': 'strategy-label' });
-  for (const key of ['snowball', 'avalanche']) {
+  for (const key of ['snowball', 'avalanche', 'custom']) {
     const input = h('input', { type: 'radio', name: 'strategy', value: key, class: 'sr-only' });
     input.addEventListener('change', () => setStrategy(key));
     const o = {
@@ -290,6 +536,7 @@ function buildPlanCard() {
     plan.options[key] = o;
     group.append(o.label);
   }
+  plan.customHint = h('p', { class: 'hint custom-hint', hidden: true });
   plan.verdict = h('div', { class: 'verdict', 'aria-live': 'polite' });
   plan.never = h('div', { class: 'callout callout-danger', hidden: true });
 
@@ -335,7 +582,7 @@ function buildPlanCard() {
 
   put(root, 
     h('header', { class: 'card-head' }, h('span', { class: 'chip-icon' }, icon('target')), plan.title),
-    plan.strategyLabel, group, plan.verdict, plan.never,
+    plan.strategyLabel, group, plan.customHint, plan.verdict, plan.never,
     h('div', { class: 'extra' },
       h('div', { class: 'extra-head' }, plan.extraLabel, plan.extraValue),
       plan.extraRange,
@@ -381,20 +628,23 @@ function updatePlanCard() {
   const cheaper = okBoth && Math.abs(dInt) >= 500 ? (dInt > 0 ? 'avalanche' : 'snowball') : null;
   const faster = okBoth && dMon !== 0 ? (dMon > 0 ? 'avalanche' : 'snowball') : null;
 
-  for (const key of ['snowball', 'avalanche']) {
+  for (const key of ['snowball', 'avalanche', 'custom']) {
     const o = plan.options[key];
-    const r = key === 'avalanche' ? A : S;
+    const r = p[key]; // custom is only simulated while selected
     o.input.checked = state.settings.strategy === key;
     o.label.classList.toggle('is-selected', o.input.checked);
     o.name.textContent = strategyName(key);
-    o.desc.textContent = key === 'avalanche' ? t.term.avalancheDesc : t.s.snowballDesc;
-    o.months.textContent = r.status === 'ok' ? t.duration(r.months) : '—';
-    put(o.cost, ...(r.status === 'ok' ? [h('span', { text: `${t.term.short} ` }), M(r.totalInterest)] : []));
+    o.desc.textContent = { avalanche: t.term.avalancheDesc, custom: t.s.customDesc }[key] || t.s.snowballDesc;
+    o.months.textContent = r ? (r.status === 'ok' ? t.duration(r.months) : '—') : '';
+    put(o.cost, ...(r && r.status === 'ok' ? [h('span', { text: `${t.term.short} ` }), M(r.totalInterest)] : []));
     put(o.badges, 
       faster === key ? h('span', { class: 'badge badge-fast' }, icon('trendingDown', { size: 14 }), t.s.badgeFaster) : null,
       cheaper === key ? h('span', { class: 'badge badge-save' }, icon('piggy', { size: 14 }), t.s.badgeCheaper) : null,
     );
   }
+
+  plan.customHint.hidden = state.settings.strategy !== 'custom';
+  plan.customHint.textContent = t.s.customHint;
 
   // verdict
   if (!okBoth) {
@@ -523,6 +773,11 @@ function renderLump() {
     await saveSettings({ lumpFils: r.ok ? r.fils : 0, lumpMonth: select.value });
     render();
   };
+  const repeat = h('input', { type: 'checkbox', id: 'lump-repeat', class: 'check-input', checked: state.settings.lumpRepeat });
+  repeat.addEventListener('change', async () => {
+    await saveSettings({ lumpRepeat: repeat.checked });
+    render();
+  });
   amount.addEventListener('change', commit);
   amount.addEventListener('input', () => {
     const r = parseAmount(amount.value, { decimals: decimals() });
@@ -543,7 +798,7 @@ function renderLump() {
         'aria-label': t.s.lumpRemove,
         onclick: async () => {
           state.lumpOpen = false;
-          await saveSettings({ lumpFils: 0, lumpMonth: '' });
+          await saveSettings({ lumpFils: 0, lumpMonth: '', lumpRepeat: false });
           render();
         },
       }, icon('x'))),
@@ -551,6 +806,7 @@ function renderLump() {
       h('div', { class: 'field' }, h('label', { class: 'field-label', for: 'lump-amount', text: t.s.lumpAmount }),
         h('div', { class: 'input-group' }, amount, h('span', { class: 'suffix', text: (CURRENCIES[state.settings.currency] || CURRENCIES.KWD)[t.lang] })), err),
       h('div', { class: 'field' }, h('label', { class: 'field-label', for: 'lump-month', text: t.s.lumpMonth }), select)),
+    h('label', { class: 'check-row', for: 'lump-repeat' }, repeat, h('span', {}, icon('repeat', { size: 16 }), h('span', { text: t.s.lumpRepeat }))),
     expired ? h('p', { class: 'field-error', text: t.s.lumpExpired }) : null,
   );
 }
@@ -594,8 +850,60 @@ function renderDti() {
 
 async function setStrategy(key) {
   if (state.settings.strategy === key) return;
+  if (key === 'custom' && !(await ensurePriorities())) return;
   await saveSettings({ strategy: key });
   render();
+}
+
+/** Save a new custom order (ids, first = paid first); all or nothing. */
+async function savePriorities(ids) {
+  const changed = [];
+  ids.forEach((id, i) => {
+    const d = state.debts.find(x => x.id === id);
+    if (d && d.priority !== i) changed.push({ d, before: d.priority, after: i });
+  });
+  if (!changed.length) return true;
+  changed.forEach(c => { c.d.priority = c.after; });
+  try {
+    await state.store.putDebts(changed.map(c => c.d));
+    return true;
+  } catch {
+    changed.forEach(c => {
+      if (c.before === undefined) delete c.d.priority;
+      else c.d.priority = c.before;
+    });
+    toast(t.s.toastSaveErr, { tone: 'danger' });
+    return false;
+  }
+}
+
+/** First switch to "my own order": start from the order on screen so nothing jumps. */
+async function ensurePriorities() {
+  const open = state.debts.filter(d => d.balanceFils > 0);
+  if (open.every(d => Number.isInteger(d.priority))) return true;
+  const shown = state.plan.current.order.filter(id => open.some(d => d.id === id));
+  const rest = open.map(d => d.id).filter(id => !shown.includes(id));
+  return savePriorities([...shown, ...rest]);
+}
+
+async function moveDebt(id, dir) {
+  const ids = payoffOrder(engineDebts(), 'custom');
+  const i = ids.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  if (!(await savePriorities(ids))) return;
+  render();
+  // keep focus on the arrow that was pressed (or its sibling once at the edge)
+  for (const key of [`${dir < 0 ? 'up' : 'down'}-${id}`, `${dir < 0 ? 'down' : 'up'}-${id}`]) {
+    const el = document.querySelector(`[data-fk="${key}"]`);
+    if (el && !el.disabled) {
+      el.focus();
+      break;
+    }
+  }
+  const d = state.debts.find(x => x.id === id);
+  toast(t.s.orderMoved(d.name, j + 1), { timeout: 2500 });
 }
 
 /* ------------------------------------------------------------------ */
@@ -607,7 +915,7 @@ function payoffLabel(id) {
   return m ? t.s.payoffBy(monthYear(planDate(m))) : t.s.payoffNever;
 }
 
-function debtCard(d, rank, isTarget, underwater) {
+function debtCard(d, rank, isTarget, underwater, reorder) {
   const pct = d.originalFils ? Math.max(0, Math.min(100, Math.floor((1 - d.balanceFils / d.originalFils) * 100))) : 0;
   const bar = h('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct), 'aria-label': t.s.paidPct(pct) }, h('i'));
   bar.firstChild.style.setProperty('--p', `${pct}%`);
@@ -618,7 +926,16 @@ function debtCard(d, rank, isTarget, underwater) {
       h('div', { class: 'debt-title' },
         h('h3', { id: `debt-${d.id}-name`, text: d.name }),
         h('span', { class: 'debt-kind', text: kindLabel(d.kind) })),
-      rank ? h('span', { class: 'order-badge', title: t.s.orderAria(rank), 'aria-label': t.s.orderAria(rank), text: String(rank) }) : null),
+      rank ? h('span', { class: 'order-badge', title: t.s.orderAria(rank), 'aria-label': t.s.orderAria(rank), text: String(rank) }) : null,
+      reorder ? h('div', { class: 'reorder' },
+        h('button', {
+          type: 'button', class: 'btn btn-ghost btn-icon btn-xs', 'data-fk': `up-${d.id}`, 'aria-label': t.s.moveUp(d.name),
+          disabled: reorder.first, onclick: () => moveDebt(d.id, -1),
+        }, icon('arrowUp', { size: 16 })),
+        h('button', {
+          type: 'button', class: 'btn btn-ghost btn-icon btn-xs', 'data-fk': `down-${d.id}`, 'aria-label': t.s.moveDown(d.name),
+          disabled: reorder.last, onclick: () => moveDebt(d.id, 1),
+        }, icon('arrowDown', { size: 16 }))) : null),
     isTarget ? h('p', { class: 'target-tag' }, icon('target', { size: 14 }), h('span', { text: t.s.target })) : null,
     h('div', { class: 'debt-balance' }, M(d.balanceFils, 'money-lg'),
       d.originalFils > d.balanceFils ? h('span', { class: 'of' }, h('span', { text: t.lang === 'ar' ? 'من ' : 'of ' }), M(d.originalFils)) : null),
@@ -642,16 +959,19 @@ function renderDebts() {
   const p = state.plan.current;
   const open = state.debts.filter(d => d.balanceFils > 0);
   const paid = state.debts.filter(d => d.balanceFils === 0);
-  const rankOf = new Map(p.order.map((id, i) => [id, i + 1]));
+  const custom = state.settings.strategy === 'custom';
+  // custom: the user's own order; otherwise the order debts get paid off
+  const rankOf = new Map((custom ? payoffOrder(engineDebts(), 'custom') : p.order).map((id, i) => [id, i + 1]));
   const target = targetId(engineDebts(), state.settings.strategy);
   const under = new Map(state.plan.underwater.map(u => [u.id, u]));
   open.sort((a, b) => (rankOf.get(a.id) ?? 1e9) - (rankOf.get(b.id) ?? 1e9));
+  const reorderFor = d => (custom ? { first: rankOf.get(d.id) === 1, last: rankOf.get(d.id) === open.length } : null);
 
   put(el, 
     h('header', { class: 'section-head' },
       h('h2', { id: 'debts-title' }, h('span', { text: t.s.debtsTitle }), h('span', { class: 'count', text: String(open.length) })),
       h('button', { type: 'button', class: 'btn btn-primary', 'data-fk': 'add-debt', onclick: () => openDebtForm() }, icon('plus'), h('span', { text: t.s.addDebt }))),
-    h('div', { class: 'debt-grid' }, open.map(d => debtCard(d, rankOf.get(d.id), d.id === target, under.get(d.id)))),
+    h('div', { class: 'debt-grid' }, open.map(d => debtCard(d, rankOf.get(d.id), d.id === target, under.get(d.id), reorderFor(d)))),
     paid.length ? h('details', { class: 'paid-group' },
       h('summary', {}, icon('badgeCheck', { size: 18 }), h('span', { text: t.s.paidOffTitle(paid.length) }), icon('chevronDown', { size: 18, cls: 'chev' })),
       h('ul', {}, paid.map(d => h('li', {},
@@ -675,12 +995,14 @@ function seriesFor(sim, key) {
   return { key, label: strategyName(key), values, events };
 }
 
+const seriesKeys = () => (state.plan.custom ? ['snowball', 'avalanche', 'custom'] : ['snowball', 'avalanche']);
+
 function renderChartCard() {
   const p = state.plan;
   const head = $('chart-head');
   put(head, 
-    h('div', {}, h('h2', { id: 'chart-title', text: t.s.chartTitle }), h('p', { class: 'card-sub', text: t.s.chartSub })),
-    h('ul', { class: 'legend' }, ['snowball', 'avalanche'].map(key => h('li', { class: key === state.settings.strategy ? 'is-selected' : '' },
+    h('div', {}, h('h2', { id: 'chart-title', text: t.s.chartTitle }), h('p', { class: 'card-sub', text: state.plan.custom ? t.s.chartSub3 : t.s.chartSub })),
+    h('ul', { class: 'legend' }, seriesKeys().map(key => h('li', { class: key === state.settings.strategy ? 'is-selected' : '' },
       h('span', { class: `chart-key series-${key}` }), h('span', { text: strategyName(key) })))),
   );
   const cur = p.current;
@@ -690,7 +1012,7 @@ function renderChartCard() {
   const root = $('chart');
   root.setAttribute('aria-label', `${aria} ${t.s.chartHint}`);
   renderChart(root, {
-    series: [seriesFor(p.snowball, 'snowball'), seriesFor(p.avalanche, 'avalanche')],
+    series: seriesKeys().map(key => seriesFor(p[key], key)),
     selected: state.settings.strategy,
     rtl: t.dir === 'rtl',
     labelAt: i => (i === 0 ? t.s.today : monthYear(planDate(i))),
@@ -722,7 +1044,7 @@ function renderMilestones() {
         h('div', { class: 'tl-body' },
           h('b', { text: monthYear(planDate(it.month)) }),
           h('span', { text: last ? `${t.s.milestone(it.d.name)} — ${t.s.milestoneFinal}` : t.s.milestone(it.d.name) }),
-          h('small', { text: t.s.heroIn(t.duration(it.month)) })));
+          h('small', { text: untilText(it.month) })));
     })) : h('p', { class: 'muted', text: cur.status === 'never' ? t.s.heroNeverSub : '—' }),
   );
 }
@@ -795,6 +1117,7 @@ function renderTools() {
   const el = $('tools');
   const has = state.debts.length > 0;
   const tiles = [];
+  if (state.debts.some(d => d.balanceFils > 0)) tiles.push(tool('calculator', t.s.buyoutTool, t.s.buyoutHint, openBuyout, 'tool-buyout'));
   if (has) {
     tiles.push(tool('printer', t.s.printPlan, t.s.printHint, () => window.print(), 'tool-print'));
     tiles.push(tool('share', t.s.shareCard, t.s.shareHint, openShareCard, 'tool-share'));
@@ -828,7 +1151,9 @@ async function openShareCard() {
     title: t.s.shareTitle,
     pct: tot.pct,
     progressText: done ? t.s.shareDone : t.s.shareProgress(tot.pct),
-    subText: done ? t.s.heroDoneSub : cur.status === 'ok' ? t.s.shareRemaining(t.duration(cur.months)) : t.s.appTagline,
+    subText: done ? t.s.heroDoneSub
+      : cur.status !== 'ok' ? t.s.appTagline
+        : monthsUntil(cur.months) ? t.s.shareRemaining(t.duration(monthsUntil(cur.months))) : t.s.shareLastMonth,
     footer: t.s.shareFooter,
     url: APP_URL,
   });
@@ -888,6 +1213,141 @@ function openReminder() {
     sheet.close();
     toast(t.s.toastReminder);
   });
+}
+
+/** Whole number field (months, installment counts); Arabic-Indic digits accepted. */
+function parseWhole(value, { min = 0, max = 600 } = {}) {
+  const v = normalizeDigits(value).trim();
+  if (!v) return { ok: false, error: 'empty' };
+  if (!/^\d+$/.test(v)) return { ok: false, error: 'whole' };
+  const n = Number(v);
+  return n >= min && n <= max ? { ok: true, n } : { ok: false, error: 'range' };
+}
+
+function wholeField({ id, label, value = '' }) {
+  const input = h('input', { type: 'text', id, inputmode: 'numeric', autocomplete: 'off', dir: 'ltr', class: 'input', value, enterkeyhint: 'next' });
+  const err = h('p', { class: 'field-error', id: `${id}-err`, hidden: true });
+  return { input, err, field: h('div', { class: 'field' }, h('label', { class: 'field-label', for: id, text: label }), input, err) };
+}
+
+function rateField({ id, label, value = '' }) {
+  const input = h('input', { type: 'text', id, inputmode: 'decimal', autocomplete: 'off', dir: 'ltr', class: 'input', value, enterkeyhint: 'next' });
+  const err = h('p', { class: 'field-error', id: `${id}-err`, hidden: true });
+  return {
+    input,
+    err,
+    field: h('div', { class: 'field' }, h('label', { class: 'field-label', for: id, text: label }),
+      h('div', { class: 'input-group' }, input, h('span', { class: 'suffix', text: '%' })), err),
+  };
+}
+
+function methodPicker(name, initial, onChange) {
+  const seg = segmented(name, ['flat', 'reducing'], onChange);
+  seg.inputs.flat.label.textContent = t.s.contractFlat;
+  seg.inputs.reducing.label.textContent = t.s.contractReducing;
+  seg.inputs[initial].input.checked = true;
+  const labelId = `${name}-label`;
+  seg.group.setAttribute('aria-labelledby', labelId);
+  return h('div', { class: 'field' }, h('p', { class: 'field-label', id: labelId, text: t.s.contractMethod }), seg.group);
+}
+
+/** Debt buyout / consolidation: current loans vs the bank's offer. */
+function openBuyout() {
+  const open = state.debts.filter(d => d.balanceFils > 0);
+  if (!open.length) {
+    toast(t.s.buyoutEmpty);
+    return;
+  }
+  const anyRated = open.some(d => d.rate > 0);
+  const picks = open.map(d => {
+    const input = h('input', { type: 'checkbox', id: `bo-${d.id}`, class: 'check-input', checked: anyRated ? d.rate > 0 : true });
+    input.addEventListener('change', () => update());
+    return {
+      d,
+      input,
+      row: h('li', {}, h('label', { class: 'check-row bo-pick', for: `bo-${d.id}` }, input,
+        h('span', { class: 'bo-name', text: d.name }),
+        h('span', { class: 'bo-meta' }, M(d.balanceFils), h('small', { text: d.rate > 0 ? formatRate(d.rate, t.lang) : t.term.free })))),
+    };
+  });
+  const rate = rateField({ id: 'bo-rate', label: t.term.offerRate, value: '5' });
+  const months = wholeField({ id: 'bo-months', label: t.s.buyoutMonths, value: '60' });
+  const fees = moneyField({ id: 'bo-fees', label: t.s.buyoutFees, optional: true });
+  let method = 'reducing';
+  const methodField = methodPicker('bo-method', method, v => {
+    method = v;
+    update();
+  });
+  const out = h('div', { class: 'bo-out', 'aria-live': 'polite' });
+  [rate.input, months.input, fees.input].forEach(el => el.addEventListener('input', () => update()));
+
+  function update() {
+    const chosen = picks.filter(p => p.input.checked).map(p => p.d);
+    const r = parseRate(rate.input.value);
+    const n = parseWhole(months.input.value, { min: 1, max: 600 });
+    const f = parseAmount(fees.input.value, { decimals: decimals() });
+    showFieldError(rate.input, rate.err, r.ok ? '' : t.s.errors.rate);
+    showFieldError(months.input, months.err, n.ok || n.error === 'empty' ? '' : t.s.errors[n.error === 'whole' ? 'whole' : 'months']);
+    showFieldError(fees.input, fees.err, f.ok || f.error === 'empty' ? '' : errorText(f.error));
+    if (!chosen.length) {
+      put(out, h('p', { class: 'field-error' }, icon('alert', { size: 14 }), h('span', { text: t.s.errors.pickDebt })));
+      return;
+    }
+    if (!r.ok || !n.ok || !(f.ok || f.error === 'empty')) {
+      put(out);
+      return;
+    }
+    const res = buyoutCompare(
+      chosen.map(d => ({ id: d.id, balance: d.balanceFils, minPayment: d.minFils, rate: d.rate, priority: d.priority })),
+      { rate: r.rate, method, months: n.n, fees: f.ok ? f.fils : 0 },
+      { strategy: state.settings.strategy },
+    );
+    if (!res) {
+      put(out);
+      return;
+    }
+    const cur = res.current;
+    const off = res.offer;
+    const ok = cur.status === 'ok';
+    const cell = v => (v === null ? h('span', { text: '—' }) : M(v));
+    const table = h('table', { class: 'bo-table' },
+      h('caption', { class: 'sr-only', text: t.s.buyoutTitle }),
+      h('thead', {}, h('tr', {}, h('td'), h('th', { scope: 'col', text: t.s.buyoutCurrent }), h('th', { scope: 'col', text: t.s.buyoutOffer }))),
+      h('tbody', {},
+        h('tr', {}, h('th', { scope: 'row', text: t.s.buyoutRowInstallment }), h('td', {}, M(cur.installment)), h('td', {}, M(off.installment))),
+        h('tr', {}, h('th', { scope: 'row', text: t.s.buyoutRowTerm }), h('td', { text: ok ? t.duration(cur.months) : '—' }), h('td', { text: t.duration(off.months) })),
+        h('tr', {}, h('th', { scope: 'row', text: t.term.costRow }), h('td', {}, cell(cur.cost)), h('td', {}, M(off.cost))),
+        h('tr', { class: 'bo-total' }, h('th', { scope: 'row', text: t.s.buyoutRowTotal }), h('td', {}, cell(cur.total)), h('td', {}, M(off.total)))));
+    let verdict;
+    let tone = 'good';
+    if (!ok) verdict = t.s.buyoutNever;
+    else {
+      const saves = res.saving >= 1000;
+      const costs = res.saving <= -1000;
+      tone = saves ? 'good' : costs ? 'bad' : 'neutral';
+      verdict = saves ? t.s.buyoutSaves(ms(res.saving)) : costs ? t.s.buyoutCosts(ms(-res.saving)) : t.s.buyoutSame;
+      if (res.monthlyRelief > 0) verdict += t.s.buyoutLower(ms(res.monthlyRelief));
+      else if (res.monthlyRelief < 0) verdict += t.s.buyoutHigher(ms(-res.monthlyRelief), saves);
+      else verdict += '.';
+    }
+    put(out,
+      h('p', { class: `bo-verdict is-${tone}` }, icon(tone === 'bad' ? 'alert' : 'sparkles', { size: 18 }), h('span', { text: verdict })),
+      method === 'flat' && r.rate > 0 ? h('p', { class: 'hint', text: t.s.contractFlatNote(formatRate(r.rate, t.lang), formatRate(off.apr, t.lang)) }) : null,
+      h('div', { class: 'table-wrap' }, table),
+      h('p', { class: 'hint', text: t.s.buyoutTip }));
+  }
+
+  const content = h('div', { class: 'form' },
+    h('fieldset', { class: 'bo-debts' }, h('legend', { class: 'field-label', text: t.s.buyoutDebts }), h('ul', {}, picks.map(p => p.row))),
+    h('div', { class: 'field-row' }, rate.field, months.field),
+    methodField,
+    fees.field,
+    out,
+    h('p', { class: 'hint', text: t.s.buyoutDisclaimer }));
+  const done = h('button', { type: 'button', class: 'btn btn-ghost', text: t.s.close });
+  const sheet = openSheet({ title: t.s.buyoutTitle, content, actions: [done], focus: rate.input });
+  done.addEventListener('click', () => sheet.close());
+  update();
 }
 
 /* ------------------------------------------------------------------ */
@@ -1019,16 +1479,122 @@ function updateSettings() {
   put(ui.clearBtn, icon('trash', { size: 18 }), h('span', { text: t.s.clearAll }));
 }
 
-async function exportBackup() {
-  const json = makeBackup(state.debts, state.settings);
-  download(new Blob([json], { type: 'application/json' }), `debt-free-backup-${new Date().toISOString().slice(0, 10)}.json`);
+function passphraseField(id, { hint = '', autocomplete = 'new-password' } = {}) {
+  const input = h('input', { type: 'password', id, class: 'input', autocomplete, dir: 'auto', spellcheck: 'false' });
+  const show = h('button', { type: 'button', class: 'btn btn-ghost btn-icon pass-toggle', 'aria-label': t.s.showPassphrase, 'aria-pressed': 'false', 'aria-controls': id }, icon('eye', { size: 18 }));
+  show.addEventListener('click', () => {
+    const reveal = input.type === 'password';
+    input.type = reveal ? 'text' : 'password';
+    show.setAttribute('aria-pressed', String(reveal));
+    put(show, icon(reveal ? 'eyeOff' : 'eye', { size: 18 }));
+    input.focus();
+  });
+  const err = h('p', { class: 'field-error', id: `${id}-err`, hidden: true });
+  const hintEl = hint ? h('p', { class: 'hint', id: `${id}-hint`, text: hint }) : null;
+  if (hintEl) input.setAttribute('aria-describedby', hintEl.id);
+  const field = h('div', { class: 'field' },
+    h('label', { class: 'field-label', for: id, text: t.s.passphrase }),
+    h('div', { class: 'pass-group' }, input, show), err, hintEl);
+  return { field, input, err };
+}
+
+/** Backup: plain JSON, or encrypted with a passphrase where Web Crypto exists. */
+function exportBackup() {
+  if (!canEncrypt()) {
+    saveBackupFile(null);
+    return;
+  }
+  const encrypt = h('input', { type: 'checkbox', role: 'switch', id: 'bk-encrypt', class: 'switch-input' });
+  const pass = passphraseField('bk-pass', { hint: t.s.passphraseHint(MIN_PASSPHRASE) });
+  pass.field.hidden = true;
+  encrypt.addEventListener('change', () => {
+    pass.field.hidden = !encrypt.checked;
+    if (encrypt.checked) pass.input.focus();
+  });
+  const formId = 'backup-form';
+  const save = h('button', { type: 'submit', form: formId, class: 'btn btn-primary' }, icon('download', { size: 18 }), h('span', { text: t.s.backupSave }));
+  const cancel = h('button', { type: 'button', class: 'btn btn-ghost', text: t.s.cancel });
+  const form = h('form', { id: formId, class: 'form', novalidate: true },
+    h('label', { class: 'switch-row', for: 'bk-encrypt' }, encrypt, h('span', { class: 'switch-ui', 'aria-hidden': 'true' }),
+      h('span', { class: 'switch-text' }, h('b', {}, icon('keyRound', { size: 16 }), h('span', { text: t.s.backupEncrypt })), h('small', { text: t.s.backupEncryptHint }))),
+    pass.field);
+  const sheet = openSheet({ title: t.s.backup, content: form, actions: [save, cancel], size: 'sheet-sm', focus: encrypt });
+  cancel.addEventListener('click', () => sheet.close());
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const secret = encrypt.checked ? pass.input.value : null;
+    if (secret !== null && [...secret].length < MIN_PASSPHRASE) {
+      showFieldError(pass.input, pass.err, t.s.errors.passphrase(MIN_PASSPHRASE));
+      pass.input.focus();
+      return;
+    }
+    save.disabled = true;
+    try {
+      await saveBackupFile(secret);
+      sheet.close();
+    } catch {
+      save.disabled = false;
+      toast(t.s.toastSaveErr, { tone: 'danger' });
+    }
+  });
+}
+
+async function saveBackupFile(passphrase) {
+  let text = makeBackup(state.debts, state.settings);
+  if (passphrase) text = await encryptBackup(text, passphrase);
+  const day = new Date().toISOString().slice(0, 10);
+  download(new Blob([text], { type: 'application/json' }), `debt-free-backup-${day}${passphrase ? '-encrypted' : ''}.json`);
   await saveSettings({ lastBackupAt: new Date().toISOString() });
   render();
-  toast(t.s.toastExported);
+  toast(passphrase ? t.s.toastExportedEncrypted : t.s.toastExported);
+}
+
+/** Ask for the passphrase of an encrypted backup; resolves the plain text or null. */
+function askPassphrase(file) {
+  return new Promise(resolve => {
+    let plain = null;
+    const pass = passphraseField('rs-pass', { autocomplete: 'current-password' });
+    const formId = 'restore-pass-form';
+    const openBtn = h('button', { type: 'submit', form: formId, class: 'btn btn-primary' }, icon('keyRound', { size: 18 }), h('span', { text: t.s.restoreOpen }));
+    const cancel = h('button', { type: 'button', class: 'btn btn-ghost', text: t.s.cancel });
+    const form = h('form', { id: formId, class: 'form', novalidate: true }, h('p', { class: 'sheet-text', text: t.s.restorePassText }), pass.field);
+    const sheet = openSheet({
+      title: t.s.restorePassTitle, content: form, actions: [openBtn, cancel], size: 'sheet-sm', focus: pass.input, onClose: () => resolve(plain),
+    });
+    cancel.addEventListener('click', () => sheet.close());
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      openBtn.disabled = true;
+      const out = await decryptBackup(file, pass.input.value);
+      openBtn.disabled = false;
+      if (out.ok) {
+        plain = out.text;
+        sheet.close();
+      } else if (out.error === 'format') {
+        sheet.close();
+        toast(t.s.toastImportErr, { tone: 'danger' });
+      } else {
+        showFieldError(pass.input, pass.err, t.s.errors.wrongPassphrase);
+        pass.input.select();
+      }
+    });
+  });
 }
 
 async function importBackup(file) {
-  const text = await file.text().catch(() => '');
+  if (file.size > MAX_BACKUP_BYTES) {
+    toast(t.s.toastImportErr, { tone: 'danger' });
+    return;
+  }
+  let text = await file.text().catch(() => '');
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch { /* parseBackup reports it */ }
+  if (isEncrypted(data)) {
+    text = await askPassphrase(data);
+    if (text === null) return; // cancelled, or a damaged file (already reported)
+  }
   const parsed = parseBackup(text);
   if (!parsed.ok) {
     toast(t.s.toastImportErr, { tone: 'danger' });
@@ -1083,8 +1649,13 @@ function sampleDebts() {
 }
 
 async function loadSample() {
-  const settings = { ...state.settings, demo: true, strategy: 'snowball', extraFils: 0, lumpFils: 0, lumpMonth: '' };
+  const settings = {
+    ...state.settings, demo: true, strategy: 'snowball', extraFils: 0, lumpFils: 0, lumpMonth: '', lumpRepeat: false, goalMonth: '', coveredMonth: '',
+  };
   if (await replaceAll(sampleDebts(), settings)) {
+    recompute();
+    const end = projectedEnd();
+    if (end !== null) await saveSettings({ goalMonth: indexKey(end), goalSetAt: new Date().toISOString() });
     render();
     $('main').focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
@@ -1095,7 +1666,9 @@ async function exitDemo() {
   const ok = await confirmSheet({ title: t.s.demoExit, message: t.s.demoExitConfirm, confirmLabel: t.s.demoExit });
   if (!ok) return;
   const mine = state.debts.filter(d => !d.demo);
-  const settings = { ...state.settings, demo: false, extraFils: 0, lumpFils: 0, lumpMonth: '' };
+  const settings = {
+    ...state.settings, demo: false, extraFils: 0, lumpFils: 0, lumpMonth: '', lumpRepeat: false, goalMonth: '', goalSetAt: '', coveredMonth: '',
+  };
   if (await replaceAll(mine, settings)) {
     state.lumpOpen = false;
     render();
@@ -1138,6 +1711,88 @@ function moneyField({ id, label, value = '', optional = false, hint }) {
   return { field, input, err };
 }
 
+/**
+ * "From your contract": amount financed, rate (flat or reducing), term and
+ * installments paid -> installment, remaining balance and the real rate.
+ */
+function contractPanel(onApply) {
+  const toggle = h('button', { type: 'button', class: 'link-btn contract-toggle', 'aria-expanded': 'false', 'aria-controls': 'contract-panel' },
+    icon('fileText', { size: 16 }), h('span', { text: t.s.contractToggle }));
+  const principal = moneyField({ id: 'c-principal', label: t.s.contractPrincipal });
+  const rate = rateField({ id: 'c-rate', label: t.term.contractRate });
+  const months = wholeField({ id: 'c-months', label: t.s.contractMonths });
+  const paid = wholeField({ id: 'c-paid', label: t.s.contractPaid, value: '0' });
+  const result = h('div', { class: 'contract-result', 'aria-live': 'polite' });
+  const apply = h('button', { type: 'button', class: 'btn btn-soft', disabled: true }, icon('check', { size: 18 }), h('span', { text: t.s.contractApply }));
+  let method = 'flat';
+
+  const compute = (show = false) => {
+    const P = parseAmount(principal.input.value, { decimals: decimals(), allowZero: false });
+    const r = parseRate(rate.input.value);
+    const n = parseWhole(months.input.value, { min: 1, max: 600 });
+    const k = parseWhole(paid.input.value || '0', { min: 0, max: 600 });
+    const wholeErr = (v, fallback) => (v.error === 'whole' ? t.s.errors.whole : v.error === 'empty' ? t.s.errors.empty : fallback);
+    const errs = [
+      [principal, P.ok ? '' : errorText(P.error)],
+      [rate, r.ok ? '' : t.s.errors.rate],
+      [months, n.ok ? '' : wholeErr(n, t.s.errors.months)],
+      [paid, !k.ok ? wholeErr(k, t.s.errors.paid) : n.ok && k.n >= n.n ? t.s.errors.paid : ''],
+    ];
+    for (const [f, msg] of errs) if (show || !msg) showFieldError(f.input, f.err, msg);
+    const terms = errs.every(([, msg]) => !msg)
+      ? contractTerms({ principal: P.fils, rate: r.rate, months: n.n, paid: k.n, method })
+      : null;
+    apply.disabled = !terms;
+    if (!terms) {
+      put(result);
+      return null;
+    }
+    put(result,
+      h('dl', { class: 'contract-figures' },
+        h('div', {}, h('dt', { text: t.s.minPay }), h('dd', {}, M(terms.installment))),
+        h('div', {}, h('dt', { text: t.s.statRemaining }), h('dd', {}, M(terms.balance))),
+        h('div', {}, h('dt', { text: t.s.contractRealRate }), h('dd', { text: formatRate(terms.apr, t.lang) }))),
+      method === 'flat' && r.rate > 0 ? h('p', { class: 'hint', text: t.s.contractFlatNote(formatRate(r.rate, t.lang), formatRate(terms.apr, t.lang)) }) : null);
+    return { ...terms, principal: P.fils };
+  };
+
+  [principal.input, rate.input, months.input, paid.input].forEach(el => {
+    el.addEventListener('input', () => compute());
+    // Enter inside the helper applies it instead of submitting the debt form
+    el.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (compute(true)) apply.click();
+    });
+  });
+  const methodField = methodPicker('c-method', method, v => {
+    method = v;
+    compute();
+  });
+  const panel = h('div', { class: 'contract', id: 'contract-panel', hidden: true },
+    h('p', { class: 'contract-title' }, icon('fileText', { size: 16 }), h('span', { text: t.s.contractTitle })),
+    principal.field,
+    h('div', { class: 'field-row' }, rate.field, months.field),
+    methodField,
+    paid.field,
+    result,
+    apply);
+  toggle.addEventListener('click', () => {
+    const opening = panel.hidden;
+    panel.hidden = !opening;
+    toggle.setAttribute('aria-expanded', String(opening));
+    if (opening) principal.input.focus();
+  });
+  apply.addEventListener('click', () => {
+    const terms = compute(true);
+    if (!terms) return;
+    panel.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    onApply(terms);
+  });
+  return { toggle, panel };
+}
+
 function openDebtForm(id = null) {
   const existing = id ? state.debts.find(d => d.id === id) : null;
   const formId = 'debt-form';
@@ -1166,6 +1821,16 @@ function openDebtForm(id = null) {
     value: existing && existing.originalFils > existing.balanceFils ? toInputValue(existing.originalFils) : '',
   });
   const preview = h('p', { class: 'form-preview', 'aria-live': 'polite' });
+  const applied = h('p', { class: 'form-preview is-good', hidden: true }, icon('checkCircle', { size: 16 }), h('span', { text: t.s.contractApplied }));
+  const contract = contractPanel(terms => {
+    bal.input.value = toInputValue(terms.balance);
+    min.input.value = toInputValue(terms.installment);
+    rateInput.value = String(terms.apr);
+    orig.input.value = toInputValue(terms.principal);
+    applied.hidden = false;
+    validate();
+    bal.input.focus();
+  });
 
   const read = () => {
     const d = decimals();
@@ -1219,6 +1884,7 @@ function openDebtForm(id = null) {
       h('div', { class: 'input-group' }, rateInput, h('span', { class: 'suffix', text: '%' })),
       rateErr,
       h('p', { class: 'hint', id: 'f-rate-hint', text: state.settings.terms === 'profit' ? t.s.fRateHintProfit : t.s.fRateHint })),
+    h('div', { class: 'field' }, contract.toggle, contract.panel, applied),
     orig.field,
     preview);
   const sheet = openSheet({
@@ -1424,6 +2090,9 @@ function openDetails(id) {
 /* ------------------------------------------------------------------ */
 
 function renderFooter() {
+  put($('footer-guides'),
+    h('h2', { class: 'footer-guides-title', id: 'guides-title' }, icon('bookOpen', { size: 16 }), h('span', { text: t.s.guidesTitle })),
+    h('ul', {}, GUIDES.map((href, i) => h('li', {}, h('a', { href, hreflang: 'ar', text: t.s.guides[i] })))));
   put($('footer-privacy'), icon('lock', { size: 16 }), h('span', { text: t.s.footerPrivacy }));
   $('footer-disclaimer').textContent = t.s.footerDisclaimer;
   $('footer-built').textContent = t.s.builtBy;
@@ -1436,6 +2105,7 @@ function render() {
   renderHero();
   renderDemoBanner();
   renderOnboarding();
+  renderCheckin();
   if (state.debts.length) {
     updatePlanCard();
     renderDebts();
@@ -1499,6 +2169,8 @@ function handleLaunchAction() {
     const id = targetId(engineDebts(), state.settings.strategy);
     if (id !== null) openPayment(id);
   }
+  if (action === 'checkin' && state.debts.some(d => d.balanceFils > 0) && !state.month.covered) openCheckin();
+  if (action === 'buyout') openBuyout();
 }
 
 async function init() {
