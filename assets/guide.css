@@ -1,0 +1,90 @@
+/* Debt Free — guide pages (short articles). Builds on the tokens in app.css. */
+
+.guide-top {
+  color: var(--hero-text);
+  background:
+    radial-gradient(700px 360px at 88% -40%, rgba(16, 185, 129, .30), transparent 62%),
+    linear-gradient(180deg, #071226 0%, var(--hero-bg) 100%);
+  padding-top: max(6px, env(safe-area-inset-top));
+}
+.guide-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 68px; }
+.guide-bar .brand-name { font-size: 1.05rem; }
+
+.guide { max-width: 780px; padding-block: 22px 28px; }
+.crumbs { margin: 0 0 14px; color: var(--text-3); font-size: .85rem; }
+.crumbs ol { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 0; list-style: none; }
+.crumbs li + li::before { content: "›"; margin-inline-end: 8px; color: var(--text-3); }
+[dir="ltr"] .crumbs li + li::before { content: "›"; }
+.crumbs a { color: var(--accent-text); }
+
+.article {
+  padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface); box-shadow: var(--shadow);
+}
+@media (min-width: 640px) { .article { padding: 32px 36px; } }
+.article h1 { margin: 0 0 12px; font-size: clamp(1.55rem, 5.4vw, 2.25rem); line-height: 1.35; }
+.article .lead { margin: 0 0 10px; color: var(--text-2); font-size: 1.08rem; line-height: 1.9; }
+.article .meta { margin: 0 0 22px; color: var(--text-3); font-size: .82rem; }
+.article h2 { margin: 30px 0 10px; font-size: 1.28rem; line-height: 1.4; }
+.article h3 { margin: 20px 0 6px; font-size: 1.05rem; }
+.article p { margin: 0 0 12px; line-height: 1.95; }
+.article ul, .article ol { margin: 0 0 14px; padding-inline-start: 22px; line-height: 1.9; }
+.article li { margin-bottom: 6px; }
+.article a { color: var(--accent-text); text-underline-offset: 3px; }
+
+.table-scroll { overflow-x: auto; margin: 6px 0 16px; border: 1px solid var(--border); border-radius: 14px; }
+.data { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.data caption { padding: 10px 12px 0; color: var(--text-3); font-size: .82rem; text-align: start; caption-side: top; }
+.data th, .data td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: start; }
+.data tbody tr:last-child > * { border-bottom: 0; }
+.data thead th { background: var(--surface-2); color: var(--text-2); font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.data td { white-space: nowrap; }
+.data .wrap { white-space: normal; }
+.data th.wrap { min-width: 9.5em; }
+.data .good { color: var(--success-text); font-weight: 700; }
+.data .bad { color: var(--danger); font-weight: 700; }
+
+.note {
+  margin: 0 0 14px; padding: 12px 14px; border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--gold-fill) 35%, transparent); background: var(--gold-soft);
+}
+.takeaways { margin: 22px 0 6px; padding: 16px 18px; border-radius: 16px; background: var(--accent-soft); }
+.takeaways h2 { margin-top: 0; font-size: 1.1rem; }
+.takeaways ul { margin-bottom: 0; }
+
+.guide-cta {
+  display: grid; gap: 10px; justify-items: start; margin-top: 18px; padding: 22px; border-radius: var(--radius-lg);
+  color: var(--hero-text);
+  background:
+    radial-gradient(600px 300px at 90% -30%, rgba(16, 185, 129, .32), transparent 60%),
+    linear-gradient(180deg, #071226, var(--hero-bg));
+}
+.guide-cta h2 { margin: 0; font-size: 1.2rem; }
+.guide-cta p { margin: 0; color: var(--hero-muted); line-height: 1.8; }
+
+.faq { margin-top: 26px; }
+.faq h2 { font-size: 1.2rem; }
+.faq details { border-bottom: 1px solid var(--border); }
+.faq summary { display: flex; align-items: center; gap: 8px; padding: 14px 0; font-weight: 700; cursor: pointer; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; margin-inline-start: auto; color: var(--text-3); font-size: 1.2rem; }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin: 0 0 14px; color: var(--text-2); line-height: 1.9; }
+
+.guide-more { margin-top: 26px; }
+.guide-more h2 { margin: 0 0 12px; font-size: 1.1rem; }
+.guide-list, .article .guide-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.guide-list a {
+  display: block; padding: 16px; border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); color: var(--text); text-decoration: none; box-shadow: var(--shadow);
+  transition: border-color .15s, transform .15s;
+}
+.guide-list a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.guide-list b { display: block; margin-bottom: 4px; font-size: 1.02rem; }
+.guide-list span { color: var(--text-3); font-size: .88rem; line-height: 1.7; }
+.guide .disclaimer { margin-top: 18px; color: var(--text-3); font-size: .82rem; text-align: center; }
+
+@media print {
+  .guide-top, .guide-cta, .guide-more { display: none !important; }
+  .article { border: 0; box-shadow: none; padding: 0; }
+}

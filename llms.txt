@@ -4,7 +4,14 @@
 
 - No accounts, no servers, no tracking: all data stays in the browser (IndexedDB) and can be exported as a JSON backup.
 - Strategies: Snowball (smallest balance first) and Avalanche (highest rate first), with freed payments rolling over to the next debt.
-- Features: extra monthly payment and one-time payment what-ifs, per-debt payoff dates, payment history with undo, monthly schedule, debt-to-income ratio, Islamic-finance terminology (profit instead of interest), printable plan, calendar reminder and a shareable progress card that contains no amounts.
+- Features: extra monthly payment, one-time or yearly bonus payments, a custom payoff order, per-debt payoff dates, a monthly check-in that logs every planned payment at once (with streak and goal tracking), payment history with undo, monthly schedule, debt-to-income ratio, Islamic-finance terminology (profit instead of interest), printable plan, calendar reminder, passphrase-encrypted backups and a shareable progress card that contains no amounts.
+- Contract helper: converts a flat-rate loan (rate on the original amount) to its real reducing-balance rate; 4% flat over 5 years is about 7.42% a year.
+- Debt buyout calculator: compares a bank's consolidation offer with the current loans on installment, term and total cost.
 - Figures are planning estimates; lenders may calculate differently (daily interest, fees, early-settlement terms).
 
 App: https://debt-free-tracker-phi.vercel.app/
+
+Guides (Arabic):
+- Snowball or avalanche: https://debt-free-tracker-phi.vercel.app/guides/snowball-vs-avalanche.html
+- Flat vs reducing rates: https://debt-free-tracker-phi.vercel.app/guides/flat-vs-reducing-rate.html
+- Debt buyouts: https://debt-free-tracker-phi.vercel.app/guides/debt-buyout.html

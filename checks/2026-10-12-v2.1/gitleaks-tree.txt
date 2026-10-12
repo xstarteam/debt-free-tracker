@@ -1,0 +1,4 @@
+commit 5d373a9168187ccb4cfffc42df155ee2fbdc9393
+$ gitleaks detect --no-git --source . --redact   # working tree
+12:37PM INF scan completed in 123ms
+12:37PM INF no leaks found

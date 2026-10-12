@@ -4,4 +4,20 @@
     <loc>https://debt-free-tracker-phi.vercel.app/</loc>
     <changefreq>monthly</changefreq>
   </url>
+  <url>
+    <loc>https://debt-free-tracker-phi.vercel.app/guides/</loc>
+    <lastmod>2026-10-12</lastmod>
+  </url>
+  <url>
+    <loc>https://debt-free-tracker-phi.vercel.app/guides/snowball-vs-avalanche.html</loc>
+    <lastmod>2026-10-12</lastmod>
+  </url>
+  <url>
+    <loc>https://debt-free-tracker-phi.vercel.app/guides/flat-vs-reducing-rate.html</loc>
+    <lastmod>2026-10-12</lastmod>
+  </url>
+  <url>
+    <loc>https://debt-free-tracker-phi.vercel.app/guides/debt-buyout.html</loc>
+    <lastmod>2026-10-12</lastmod>
+  </url>
 </urlset>

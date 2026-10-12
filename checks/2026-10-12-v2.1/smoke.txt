@@ -1,0 +1,49 @@
+commit 5d373a9168187ccb4cfffc42df155ee2fbdc9393
+$ node tools/smoke.mjs --shots <dir>   # Chromium (Playwright 1.56.1), axe-core 4.10.2
+smoke @ http://127.0.0.1:38893
+  ok   first run shows onboarding, no plan sections — اعرف بالضبط متى تتحرر من ديونك
+  ok   a11y: empty state (ar, dark) — 0 violations
+  ok   sample data renders plan, 5 debts, chart, schedule — أبريل 2029 · بعد سنتين و6 أشهر · 31 دفعة شهرية
+  ok   hero shows what the debts cost per day — ديونك تكلفك 3.297 د.ك باليوم
+  ok   check-in card: plan for this month, streak and an on-track goal — دفعات أكتوبر 2026 الخطة لهالشهر: 615.000 د.ك على 5 ديون · سجّل أقساط هالشهر بضغطة وحدة. سجّل دفعات الشهر سلسلة الالتزام:
+  ok   digits are Latin everywhere (no ١٢٣ mixed with 123)
+  ok   verdict recommends the cheaper strategy and applies it — الانهيار الجليدي يوفّر لك 40.060 د.ك بنفس المدة.اعتمد الانهيار الجليدي
+  ok   extra payment slider updates the plan live with savings — أبريل 2029 → أكتوبر 2028 · توفّر 374.067 د.ك وتتحرر قبل 6 أشهر
+  ok   a bigger extra payment puts you ahead of your goal — متقدم 6 أشهر عن هدفكهدفك: التحرر في أبريل 2029ثبّت تاريخ الخطة الحالي كهدف
+  ok   lump sum adds to the impact; a yearly bonus moves the date further — توفّر 529.947 د.ك وتتحرر قبل 9 أشهر · once أغسطس 2028 → yearly يوليو 2028
+  ok   salary enables the debt-to-income meter — 51% من راتبك
+  ok   a11y: populated (ar, dark) — 0 violations
+  ok   add-debt form: empty submit shows inline errors, stays open — اكتب اسماً للدين | مطلوب | مطلوب
+  ok   Arabic-Indic digits accepted and Enter submits — 1,200.500 saved
+  ok   XSS probe: markup in a name renders as text — not executed
+  ok   log payment, then undo restores the balance — 6,500 → 6,000 → 6,500
+  ok   paying a debt off celebrates and moves it to the paid group — مبروك! سددت «تابي» بالكامل · plan يوليو 2028 → يوليو 2028
+  ok   details: payment history, remove a payment restores balance — history 2 → 1, balance 1,200 → 1,260
+  ok   delete debt asks first, undo brings it back — 6 → 5 → 6
+  ok   Escape closes a dialog and returns focus to its trigger
+  ok   chart is keyboard-operable (focus + arrows show tooltip) — نوفمبر 202617,218.244 د.ككرة الثلج17,215.994 د.كالانهيار الج
+  ok   data persists across reload (IndexedDB) — 6 debts
+  ok   English switch flips direction and copy — in 1 year, 9 months · 22 payments to go
+  ok   theme cycles auto → light → dark
+  ok   a11y: populated (ar, light, desktop) — 0 violations
+  ok   export → wipe → import round-trip — debt-free-backup-2026-10-12.json (v2, 5 debts)
+  ok   encrypted backup: unreadable file, wrong passphrase refused, right one restores — debt-free-backup-2026-10-12-encrypted.json → wrong passphrase refused → restored 5 debts
+  ok   corrupt backup is rejected and the app keeps working after reload — ملف غير صالح — ما تغيّر شي; unknown lang fell back to ar
+  ok   monthly check-in logs every planned payment at once; the plan date holds; undo restores — تم تسجيل 5 دفعات بمجموع 615.000 د.ك · date stays أبريل 2029 · undo ok
+  ok   a11y: check-in sheet open — 0 violations
+  ok   custom order: arrows reorder debts, focus follows, plan uses the new order — تابي > سلفة من الأهل > بطاقة ائتمانية > قرض شخصي > قرض السيارة
+  ok   contract helper: 4% flat over 60 months, 12 paid → balance, payment and real rate — 8284.445 | 200 | 7.42 | 10000 · القسط200.000 د.كالمتبقي8,284.445 د.كالنسبة الفعلية7.42%نسبة 4% ثابتة ت
+  ok   debt buyout: a long cheap loan costs more, a short one saves — 120 months: العرض يكلّفك 2,598.340 د.ك زيادة وقسطه أ… · 36 months: العرض يوفّر عليك 638.636 د.ك، بس قسطه أع… · a11y 0 violations
+  ok   guides: every page renders, links back to the app, no CSP violations — أدلة مختصرة لسداد ديونك · كرة الثلج أو الانهيار ال · النسبة الثابتة والمتناقص · شراء المديونية: متى يوفر
+  ok   a11y: guide page — 0 violations
+  ok   guide call-to-action opens the buyout calculator in the app — opened
+  ok   never-ending plan: clear warning, no absurd numbers, one-tap fix — القسط أقل من الفائدة الشهرية (200.000 د.ك) → apply → سبتمبر 2031
+  ok   calendar reminder downloads a valid monthly .ics — debt-free-reminder.ics
+  ok   progress card renders a 1080x1920 image without amounts — 1080x1920
+  ok   no CSP violations
+  ok   offline: after first visit the app loads in airplane mode — أبريل 2029, self-hosted font and guides available offline
+  ok   update path: new deploy → "new version" prompt → reload on tap — نسخة جديدة متاحة → debt-free-shell-2.1.0-ecc28ad12e-next
+  ok   print layout hides controls and shows the plan — controls hidden
+  ok   no page errors or console errors
+
+44 passed / 0 failed

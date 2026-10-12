@@ -12,7 +12,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 /** Everything the app needs to run offline. Screenshots / OG image are not runtime. */
 export async function runtimeFiles() {
@@ -21,6 +21,9 @@ export async function runtimeFiles() {
   const fonts = (await readdir(join(ROOT, 'assets/fonts'))).filter(f => f.endsWith('.woff2')).sort();
   list.push(...js.map(f => `assets/js/${f}`), ...fonts.map(f => `assets/fonts/${f}`));
   list.push('assets/img/icon.svg', 'assets/img/icon-192.png', 'assets/img/icon-512.png', 'assets/img/icon-maskable-512.png', 'assets/img/apple-touch-icon.png');
+  // the Arabic guides work offline too
+  const guides = (await readdir(join(ROOT, 'guides'))).filter(f => f.endsWith('.html')).sort();
+  list.push('assets/guide.css', ...guides.map(f => `guides/${f}`));
   return list;
 }
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.1.0 — planning tools and guides (2026-10-12)
+
+### Added
+- Monthly check-in: one sheet logs every planned payment for the month (one undo), with a streak and an ahead/behind-goal line. The goal is set with one tap (sample data starts with one).
+- Until this month is logged, the plan starts this month and only asks for what is left, so the freedom date holds steady when you pay on time.
+- "From your contract" in the debt form: amount financed, flat or reducing rate, term and installments paid give the installment, remaining balance and real rate (4% flat over 5 years = 7.42% real).
+- Debt buyout calculator: the bank's offer against your current loans on installment, term and total cost, with a plain verdict.
+- My own order: a third payoff strategy with up/down arrows on each debt card and its own line on the chart.
+- A one-time payment can repeat every year (annual bonus).
+- The hero shows what today's balances cost per day.
+- Encrypted backups (PBKDF2-SHA-256 + AES-256-GCM, passphrase never stored); restoring asks for the passphrase and refuses a wrong one.
+- Arabic guides with worked examples: snowball vs avalanche, flat vs reducing rates, debt buyouts. Linked from the app footer, listed in the sitemap, available offline.
+
+### Changed
+- The service worker serves each page from its own cache entry; the app shell stays the offline fallback.
+- The story card and encryption modules load on first use.
+- Deploy checks cover every page (app and guides).
+- ADR 0001 accepted by the owner; CLAUDE.md added.
+
 ## v2.0.0 — demo-ready redesign (2026-10-12)
 
 ### Fixed
