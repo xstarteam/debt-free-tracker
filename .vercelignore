@@ -1,0 +1,11 @@
+# Only the runtime app is deployed; source-of-truth docs, tests and tooling stay in git.
+.github
+.githooks
+checks
+docs
+tests
+tools
+package.json
+README.md
+CHANGELOG.md
+.gitignore

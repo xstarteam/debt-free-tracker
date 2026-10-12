@@ -1,763 +1,151 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0e1420">
-<title>محرر الديون | Debt Free</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>محرر الديون — خطتك للتحرر من الديون</title>
+<meta name="description" content="اعرف بالضبط متى تتحرر من ديونك. قارن بين كرة الثلج والانهيار الجليدي، وشوف أثر أي دفعة إضافية — بدون حسابات، ويعمل بدون إنترنت، وبياناتك على جهازك فقط.">
+<meta name="theme-color" content="#060b16">
+<meta name="color-scheme" content="dark light">
+<link rel="canonical" href="https://debt-free-tracker-phi.vercel.app/">
+
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Debt Free">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="محرر الديون">
+
 <!-- Social sharing -->
-<meta property="og:title" content="محرر الديون | Debt Free Tracker">
-<meta property="og:description" content="خطتك للتحرر من الديون — كرة الثلج أو الانهيار الجليدي. يعمل بدون إنترنت وبخصوصية كاملة.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="محرر الديون · Debt Free">
+<meta property="og:title" content="محرر الديون — اعرف متى تتحرر من ديونك">
+<meta property="og:description" content="كرة الثلج أو الانهيار الجليدي؟ خطة سداد واضحة بتاريخ تحرر دقيق. بدون حسابات، ويعمل بدون إنترنت، وبياناتك على جهازك فقط.">
 <meta property="og:url" content="https://debt-free-tracker-phi.vercel.app/">
-<meta property="og:image" content="https://debt-free-tracker-phi.vercel.app/icon-512.png">
-<meta name="twitter:card" content="summary">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-:root{
-  --bg:#f6f4ef; --card:#ffffff; --card2:#fbfaf7; --text:#1c2430; --muted:#6b7280;
-  --line:#e6e2d8; --accent:#0f8a5f; --accent-soft:#e2f3ec; --gold:#b98a1e; --gold-soft:#f7efd9;
-  --danger:#c0392b; --shadow:0 6px 24px rgba(30,40,60,.07);
-}
-[data-theme="dark"]{
-  --bg:#0e1420; --card:#161e2e; --card2:#121a29; --text:#eef2f7; --muted:#94a0b3;
-  --line:#243044; --accent:#35c98e; --accent-soft:#12362a; --gold:#e8b44a; --gold-soft:#3a2f14;
-  --danger:#ef6a5a; --shadow:0 6px 24px rgba(0,0,0,.35);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
-  background:var(--bg);color:var(--text);min-height:100vh;
-  transition:background .3s,color .3s;line-height:1.6;
-}
-.wrap{max-width:1080px;margin:0 auto;padding:16px 16px 80px}
-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 18px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px}
-.brand .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--gold));display:grid;place-items:center;font-size:20px}
-.brand h1{font-size:1.15rem;font-weight:700}
-.brand small{display:block;color:var(--muted);font-weight:400;font-size:.75rem}
-.controls{display:flex;gap:8px}
-.pill{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 14px;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600;transition:.2s}
-.pill:hover{border-color:var(--accent)}
-/* Hero */
-.hero{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 22px;box-shadow:var(--shadow);text-align:center;position:relative;overflow:hidden}
-.hero::before{content:"";position:absolute;inset:auto -60px -120px -60px;height:200px;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--accent) 18%,transparent),transparent 70%);pointer-events:none}
-.hero .eyebrow{color:var(--muted);font-size:.85rem;letter-spacing:.5px}
-.freedom-date{font-size:clamp(1.9rem,6vw,3rem);font-weight:700;color:var(--gold);margin:6px 0 2px}
-.freedom-sub{color:var(--muted);font-size:.9rem}
-.hero-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:20px}
-.stat{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px}
-.stat b{display:block;font-size:1.15rem}
-.stat span{font-size:.75rem;color:var(--muted)}
-/* Strategy segmented */
-.seg{display:inline-flex;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-top:18px}
-.seg button{border:none;background:transparent;color:var(--muted);padding:9px 20px;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;transition:.2s}
-.seg button.active{background:var(--accent);color:#fff}
-.extra-row{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap}
-.extra-row label{font-size:.9rem;color:var(--muted)}
-.extra-row input{width:130px;text-align:center}
-input,select{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:.95rem;outline:none;transition:.2s}
-input:focus,select:focus{border-color:var(--accent)}
-/* Comparison */
-.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
-.cmp{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center}
-.cmp.best{border-color:var(--accent)}
-.cmp h4{font-size:.85rem;color:var(--muted);font-weight:600}
-.cmp .big{font-size:1.2rem;font-weight:700;margin-top:4px}
-.cmp .sm{font-size:.78rem;color:var(--muted)}
-.badge{display:inline-block;font-size:.68rem;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;margin-top:6px;font-weight:700}
-/* Sections */
-section{margin-top:34px}
-.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
-.sec-head h2{font-size:1.05rem}
-.btn{border:none;background:var(--accent);color:#fff;border-radius:12px;padding:11px 18px;cursor:pointer;font-family:inherit;font-weight:700;font-size:.9rem;transition:.2s}
-.btn:hover{filter:brightness(1.08)}
-.btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--line)}
-.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
-/* Debt cards */
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.debt{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);position:relative;transition:.2s}
-.debt.target{border:2px solid var(--gold)}
-.target-badge{position:absolute;top:-11px;inset-inline-start:14px;background:var(--gold);color:#1c1608;font-size:.7rem;font-weight:700;border-radius:999px;padding:3px 12px}
-.debt h3{font-size:1rem;margin-bottom:2px}
-.debt .rate{font-size:.75rem;color:var(--muted)}
-.debt .bal{font-size:1.35rem;font-weight:700;margin:8px 0 2px}
-.debt .meta{font-size:.78rem;color:var(--muted)}
-.progress{height:10px;background:var(--card2);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:12px 0 6px}
-.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:999px;transition:width .5s}
-.pct{font-size:.75rem;color:var(--accent);font-weight:700}
-.debt-actions{display:flex;gap:8px;margin-top:12px}
-.debt-actions button{flex:1;font-size:.8rem;padding:8px}
-.empty{background:var(--card);border:2px dashed var(--line);border-radius:18px;padding:40px 20px;text-align:center;color:var(--muted)}
-.empty .big-ico{font-size:2.2rem}
-/* Chart */
-.chart-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
-.chart-card canvas{max-height:320px}
-/* Table */
-.tbl-wrap{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:auto;max-height:420px;box-shadow:var(--shadow)}
-table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px}
-th,td{padding:10px 14px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
-th{position:sticky;top:0;background:var(--card2);color:var(--muted);font-size:.75rem;font-weight:700;z-index:1}
-tr.payoff td{color:var(--accent);font-weight:700}
-/* Data buttons */
-.data-row{display:flex;gap:10px;flex-wrap:wrap}
-/* Modal */
-.overlay{position:fixed;inset:0;background:rgba(5,10,20,.55);display:none;place-items:center;padding:16px;z-index:50;backdrop-filter:blur(3px)}
-.overlay.show{display:grid}
-.modal{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;width:100%;max-width:420px;box-shadow:var(--shadow)}
-.modal h3{margin-bottom:16px}
-.field{margin-bottom:14px}
-.field label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:5px;font-weight:600}
-.field input{width:100%}
-.modal-actions{display:flex;gap:10px;margin-top:18px}
-.modal-actions .btn{flex:1}
-.hint{font-size:.72rem;color:var(--muted);margin-top:3px}
-.warn{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);border-radius:12px;padding:10px 14px;font-size:.82rem;margin-top:14px;display:none;font-weight:600}
-.warn.show{display:block}
-footer{text-align:center;color:var(--muted);font-size:.75rem;margin-top:50px}
-/* X Star brand */
-.xstar{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
-.xstar a{display:inline-flex;align-items:center;gap:12px;text-decoration:none;padding:12px 20px;border-radius:16px;border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);transition:.25s}
-.xstar a:hover{border-color:#2176FF;transform:translateY(-2px)}
-.xstar svg{width:44px;height:44px;flex-shrink:0}
-.xstar .xmark-w{fill:var(--text)}
-.xstar .xmark-b{fill:#2176FF}
-.xstar .lockup{text-align:start;line-height:1.15}
-.xstar .lockup b{display:block;color:var(--text);font-size:1rem;font-weight:700;letter-spacing:1.5px}
-.xstar .lockup span{display:block;color:#2176FF;font-size:.62rem;font-weight:700;letter-spacing:4.5px}
-.xstar .ig{color:var(--muted);font-size:.72rem}
-.xstar .ig b{color:#2176FF}
-.toast{position:fixed;bottom:20px;inset-inline-start:50%;transform:translateX(-50%);background:var(--accent);color:#fff;border-radius:999px;padding:10px 22px;font-size:.85rem;font-weight:700;opacity:0;pointer-events:none;transition:.3s;z-index:99}
-[dir="rtl"] .toast{transform:translateX(50%)}
-.toast.show{opacity:1}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-@media (max-width:560px){.compare{grid-template-columns:1fr}}
-</style>
+<meta property="og:image" content="https://debt-free-tracker-phi.vercel.app/assets/img/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="محرر الديون — تاريخ تحررك من الديون">
+<meta property="og:locale" content="ar_KW">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="محرر الديون — اعرف متى تتحرر من ديونك">
+<meta name="twitter:description" content="خطة سداد بتاريخ تحرر دقيق — بخصوصية كاملة.">
+<meta name="twitter:image" content="https://debt-free-tracker-phi.vercel.app/assets/img/og-image.png">
+
+<link rel="preload" href="assets/fonts/plex-arabic-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/plex-arabic-arabic-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/plex-arabic-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/js/boot.js"></script>
+<script type="module" src="assets/js/app.js"></script>
+<!-- fetch the whole module graph in parallel instead of import-by-import -->
+<link rel="modulepreload" href="assets/js/engine.js">
+<link rel="modulepreload" href="assets/js/money.js">
+<link rel="modulepreload" href="assets/js/i18n.js">
+<link rel="modulepreload" href="assets/js/store.js">
+<link rel="modulepreload" href="assets/js/ui.js">
+<link rel="modulepreload" href="assets/js/icons.js">
+<link rel="modulepreload" href="assets/js/chart.js">
+<link rel="modulepreload" href="assets/js/share.js">
 </head>
 <body>
-<div class="wrap">
+<a class="skip-link" id="skip-link" href="#main">تخطَّ إلى المحتوى</a>
 
-<header>
-  <div class="brand">
-    <div class="logo">🕊️</div>
-    <div>
-      <h1 data-i18n="appName">محرر الديون</h1>
-      <small data-i18n="appTag">خصوصية كاملة · يعمل بدون إنترنت</small>
+<header class="hero" id="top">
+  <div class="shell">
+    <div class="appbar">
+      <a class="brand" href="./">
+        <svg class="brand-mark" viewBox="0 0 64 64" width="44" height="44" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#10b981"/>
+              <stop offset="1" stop-color="#065f46"/>
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="16" fill="url(#brand-grad)"/>
+          <path d="M32 15A17 17 0 1 1 16.03 26.19" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+          <path d="M24.5 32.5l5 5L40 26" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="16.03" cy="26.19" r="3.6" fill="#fcd34d"/>
+        </svg>
+        <span class="brand-text">
+          <h1 class="brand-name" id="brand-name">محرر الديون</h1>
+          <span class="brand-tag" id="brand-tag">خطتك للتحرر من الديون</span>
+        </span>
+      </a>
+      <div class="appbar-actions">
+        <button type="button" class="btn btn-hero-ghost btn-sm" id="install-btn" hidden>تثبيت</button>
+        <button type="button" class="btn btn-hero-ghost btn-sm" id="lang-btn" lang="en">English</button>
+        <button type="button" class="btn btn-hero-ghost btn-icon" id="theme-btn" aria-label="تغيير المظهر"></button>
+      </div>
     </div>
-  </div>
-  <div class="controls">
-    <button class="pill" id="langBtn">English</button>
-    <button class="pill" id="themeBtn">☀️</button>
+    <div class="hero-body" id="hero-body">
+      <div class="hero-empty">
+        <h2 class="hero-title">اعرف بالضبط متى تتحرر من ديونك</h2>
+        <p class="hero-lead">أضف ديونك، واختر طريقة السداد، وتابع تقدمك شهراً بشهر. بدون حسابات، وكل شي يبقى على جهازك.</p>
+      </div>
+    </div>
   </div>
 </header>
 
-<!-- HERO -->
-<div class="hero">
-  <div class="eyebrow" data-i18n="freedomLabel">🎉 تاريخ حريتك المالية</div>
-  <div class="freedom-date" id="freedomDate">—</div>
-  <div class="freedom-sub" id="freedomSub"></div>
-  <div class="hero-stats">
-    <div class="stat"><b id="stTotal">—</b><span data-i18n="totalDebt">إجمالي الديون</span></div>
-    <div class="stat"><b id="stMonths">—</b><span data-i18n="monthsLeft">الأشهر المتبقية</span></div>
-    <div class="stat"><b id="stInterest">—</b><span data-i18n="totalInterest">إجمالي الفوائد المتوقعة</span></div>
-    <div class="stat"><b id="stMonthly">—</b><span data-i18n="monthlyOut">دفعتك الشهرية</span></div>
-  </div>
-  <div class="seg" role="tablist">
-    <button id="segSnow" data-i18n="snowball">كرة الثلج ❄️</button>
-    <button id="segAva" data-i18n="avalanche">الانهيار الجليدي 🏔️</button>
-  </div>
-  <div class="extra-row">
-    <label data-i18n="extraLabel">دفعة إضافية شهرية:</label>
-    <input type="number" id="extraInput" min="0" step="1" value="0">
-  </div>
-  <div class="warn" id="warnBox" data-i18n="warnMin">⚠️ الأقساط الحالية لا تكفي لتغطية الفوائد — الديون لن تنتهي. ارفع الدفعة الإضافية.</div>
-</div>
+<main id="main" class="shell main" tabindex="-1">
+  <p class="banner banner-danger" id="storage-warning" hidden role="alert"><span id="storage-warning-text"></span></p>
+  <div class="banner banner-info" id="demo-banner" hidden></div>
 
-<!-- COMPARISON -->
-<div class="compare">
-  <div class="cmp" id="cmpSnow">
-    <h4 data-i18n="snowball">كرة الثلج ❄️</h4>
-    <div class="big" id="cmpSnowMonths">—</div>
-    <div class="sm" id="cmpSnowInt">—</div>
-    <div class="badge" id="cmpSnowBadge" style="display:none" data-i18n="motivBadge">دافعية أسرع 💪</div>
-  </div>
-  <div class="cmp" id="cmpAva">
-    <h4 data-i18n="avalanche">الانهيار الجليدي 🏔️</h4>
-    <div class="big" id="cmpAvaMonths">—</div>
-    <div class="sm" id="cmpAvaInt">—</div>
-    <div class="badge" id="cmpAvaBadge" style="display:none" data-i18n="saveBadge">توفير أكبر 💰</div>
-  </div>
-</div>
+  <section class="onboarding" id="onboarding" hidden></section>
 
-<!-- DEBTS -->
-<section>
-  <div class="sec-head">
-    <h2 data-i18n="yourDebts">💳 ديونك</h2>
-    <button class="btn" id="addBtn" data-i18n="addDebt">+ أضف ديناً</button>
+  <div class="layout" id="layout" hidden>
+    <aside class="col-side">
+      <section class="card plan" id="plan" aria-labelledby="plan-title"></section>
+    </aside>
+    <div class="col-main">
+      <section class="debts" id="debts" aria-labelledby="debts-title"></section>
+      <section class="card chart-card" aria-labelledby="chart-title">
+        <header class="card-head chart-head" id="chart-head"></header>
+        <div class="chart" id="chart"></div>
+        <p class="hint no-print" id="chart-hint"></p>
+      </section>
+      <div class="pair">
+        <section class="card" id="milestones"></section>
+        <section class="card schedule-card" id="schedule"></section>
+      </div>
+    </div>
   </div>
-  <div class="cards" id="cards"></div>
-  <div class="empty" id="emptyState" style="display:none">
-    <div class="big-ico">🌱</div>
-    <p data-i18n="emptyMsg">ابدأ رحلتك نحو الحرية المالية — أضف أول دين لك.</p>
-  </div>
-</section>
 
-<!-- CHART -->
-<section>
-  <div class="sec-head"><h2 data-i18n="chartTitle">📉 تناقص الديون بمرور الوقت</h2></div>
-  <div class="chart-card"><canvas id="chart"></canvas></div>
-</section>
+  <section class="tools" id="tools" hidden></section>
 
-<!-- AMORTIZATION -->
-<section>
-  <div class="sec-head"><h2 data-i18n="amortTitle">📅 جدول السداد الشهري</h2></div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th data-i18n="thMonth">الشهر</th><th data-i18n="thDate">التاريخ</th>
-        <th data-i18n="thPay">المدفوع</th><th data-i18n="thInt">الفائدة</th>
-        <th data-i18n="thBal">الرصيد المتبقي</th><th data-i18n="thEvent">حدث</th>
-      </tr></thead>
-      <tbody id="amortBody"></tbody>
-    </table>
+  <div class="pair settings-pair no-print">
+    <section class="card" id="settings" aria-labelledby="settings-title"></section>
+    <section class="card" id="data" aria-labelledby="data-title"></section>
   </div>
-</section>
+</main>
 
-<!-- DATA -->
-<section>
-  <div class="sec-head"><h2 data-i18n="dataTitle">💾 بياناتك (محلية 100%)</h2></div>
-  <div class="data-row">
-    <button class="btn ghost" id="exportBtn" data-i18n="exportBtn">⬇️ تصدير نسخة احتياطية (JSON)</button>
-    <button class="btn ghost" id="importBtn" data-i18n="importBtn">⬆️ استعادة نسخة</button>
-    <button class="btn danger" id="clearBtn" data-i18n="clearBtn">🗑️ مسح كل البيانات</button>
-    <input type="file" id="importFile" accept=".json" style="display:none">
-  </div>
-</section>
-
-<footer>
-  <div data-i18n="footer">بياناتك لا تغادر جهازك أبداً 🔒</div>
-  <div class="xstar">
-    <a href="https://www.instagram.com/xstar.kw" target="_blank" rel="noopener" aria-label="X Star Software on Instagram">
-      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img">
-        <!-- X mark: "\" top-left + "/" bottom-left in theme color, rest brand blue -->
-        <polygon class="xmark-w" points="15,12 33,12 56.4,48 38.4,48"/>
-        <polygon class="xmark-b" points="43.6,54 61.6,54 85,90 67,90"/>
-        <polygon class="xmark-b" points="67,12 85,12 61.6,48 43.6,48"/>
-        <polygon class="xmark-w" points="38.4,54 56.4,54 33,90 15,90"/>
-        <path class="xmark-b" d="M88 0 L91.2 7.8 L99 11 L91.2 14.2 L88 22 L84.8 14.2 L77 11 L84.8 7.8 Z"/>
-      </svg>
-      <span class="lockup"><b>X STAR</b><span>SOFTWARE</span></span>
-    </a>
-    <div class="ig"><span data-i18n="builtBy">تطوير X Star Software · تابعنا</span> <b>@xstar.kw</b></div>
-  </div>
+<footer class="footer shell">
+  <p class="footer-privacy" id="footer-privacy">بياناتك ما تطلع من جهازك، والتطبيق يشتغل بدون إنترنت.</p>
+  <p class="footer-disclaimer" id="footer-disclaimer">الأرقام تقديرية للتخطيط فقط، وقد تختلف عن حسابات البنك.</p>
+  <p class="print-meta" id="print-meta"></p>
+  <a class="xstar" href="https://www.instagram.com/xstar.kw" target="_blank" rel="noopener noreferrer">
+    <span class="xstar-by" id="footer-built">تطوير</span>
+    <svg viewBox="0 0 100 100" width="34" height="34" aria-hidden="true" focusable="false">
+      <polygon class="xm-ink" points="15,12 33,12 56.4,48 38.4,48"/>
+      <polygon class="xm-blue" points="43.6,54 61.6,54 85,90 67,90"/>
+      <polygon class="xm-blue" points="67,12 85,12 61.6,48 43.6,48"/>
+      <polygon class="xm-ink" points="38.4,54 56.4,54 33,90 15,90"/>
+      <path class="xm-blue" d="M88 0 L91.2 7.8 L99 11 L91.2 14.2 L88 22 L84.8 14.2 L77 11 L84.8 7.8 Z"/>
+    </svg>
+    <span class="xstar-lockup" lang="en"><b>X STAR</b><span>SOFTWARE</span></span>
+    <span class="xstar-ig" lang="en">@xstar.kw</span>
+  </a>
 </footer>
-</div>
 
-<!-- DEBT MODAL -->
-<div class="overlay" id="debtOverlay">
-  <div class="modal">
-    <h3 id="modalTitle" data-i18n="addDebtTitle">إضافة دين جديد</h3>
-    <div class="field"><label data-i18n="fName">اسم القرض</label><input id="fName" placeholder=""></div>
-    <div class="field"><label data-i18n="fOriginal">المبلغ الأصلي</label><input id="fOriginal" type="number" min="0" step="0.001"><div class="hint" data-i18n="fOriginalHint">المبلغ الكلي للقرض — لحساب نسبة التقدم</div></div>
-    <div class="field"><label data-i18n="fBalance">الرصيد المتبقي الآن</label><input id="fBalance" type="number" min="0" step="0.001"></div>
-    <div class="field"><label data-i18n="fMin">القسط الشهري الأدنى</label><input id="fMin" type="number" min="0" step="0.001"></div>
-    <div class="field"><label data-i18n="fRate">نسبة الفائدة السنوية %</label><input id="fRate" type="number" min="0" step="0.01" value="0"><div class="hint" data-i18n="fRateHint">اتركها 0 إذا كان القرض بدون فوائد</div></div>
-    <div class="modal-actions">
-      <button class="btn" id="saveDebtBtn" data-i18n="save">حفظ</button>
-      <button class="btn ghost" id="cancelDebtBtn" data-i18n="cancel">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- PAYMENT MODAL -->
-<div class="overlay" id="payOverlay">
-  <div class="modal">
-    <h3 data-i18n="payTitle">تسجيل دفعة 💰</h3>
-    <p style="color:var(--muted);font-size:.85rem;margin-bottom:14px" id="payDebtName"></p>
-    <div class="field"><label data-i18n="payAmount">مبلغ الدفعة</label><input id="payAmount" type="number" min="0" step="0.001"></div>
-    <div class="modal-actions">
-      <button class="btn" id="savePayBtn" data-i18n="confirmPay">تأكيد الدفعة</button>
-      <button class="btn ghost" id="cancelPayBtn" data-i18n="cancel">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-/* ============ i18n ============ */
-const I18N = {
-ar:{
-  appName:"محرر الديون", appTag:"خصوصية كاملة · يعمل بدون إنترنت",
-  freedomLabel:"🎉 تاريخ حريتك المالية", totalDebt:"إجمالي الديون", monthsLeft:"الأشهر المتبقية",
-  totalInterest:"إجمالي الفوائد المتوقعة", monthlyOut:"دفعتك الشهرية",
-  snowball:"كرة الثلج ❄️", avalanche:"الانهيار الجليدي 🏔️",
-  extraLabel:"دفعة إضافية شهرية:", warnMin:"⚠️ الأقساط الحالية لا تكفي لتغطية الفوائد — الديون لن تنتهي. ارفع الدفعة الإضافية.",
-  motivBadge:"دافعية أسرع 💪", saveBadge:"توفير أكبر 💰",
-  yourDebts:"💳 ديونك", addDebt:"+ أضف ديناً",
-  emptyMsg:"ابدأ رحلتك نحو الحرية المالية — أضف أول دين لك.",
-  chartTitle:"📉 تناقص الديون بمرور الوقت", amortTitle:"📅 جدول السداد الشهري",
-  thMonth:"الشهر", thDate:"التاريخ", thPay:"المدفوع", thInt:"الفائدة", thBal:"الرصيد المتبقي", thEvent:"حدث",
-  dataTitle:"💾 بياناتك (محلية 100%)", exportBtn:"⬇️ تصدير نسخة احتياطية (JSON)",
-  importBtn:"⬆️ استعادة نسخة", clearBtn:"🗑️ مسح كل البيانات",
-  footer:"بياناتك لا تغادر جهازك أبداً 🔒",
-  builtBy:"تطوير X Star Software · تابعنا على إنستقرام",
-  addDebtTitle:"إضافة دين جديد", editDebtTitle:"تعديل الدين",
-  fName:"اسم القرض", fOriginal:"المبلغ الأصلي", fOriginalHint:"المبلغ الكلي للقرض — لحساب نسبة التقدم",
-  fBalance:"الرصيد المتبقي الآن", fMin:"القسط الشهري الأدنى",
-  fRate:"نسبة الفائدة السنوية %", fRateHint:"اتركها 0 إذا كان القرض بدون فوائد",
-  save:"حفظ", cancel:"إلغاء",
-  payTitle:"تسجيل دفعة 💰", payAmount:"مبلغ الدفعة", confirmPay:"تأكيد الدفعة",
-  targetBadge:"🎯 ركّز هنا", pay:"سجّل دفعة", edit:"تعديل", del:"حذف",
-  minPay:"القسط الأدنى:", ratePrefix:"فائدة", noRate:"بدون فوائد",
-  paidPct:"مُسدَّد", months:"شهر", monthsWord:"أشهر",
-  interestWord:"فوائد:", debtFreeNow:"أنت حر مالياً! 🎉", addFirst:"أضف ديونك لتبدأ",
-  paidOff:"✅ تم سداد:", confirmDel:"هل تريد حذف هذا الدين؟",
-  confirmClear:"سيتم مسح كل البيانات نهائياً. هل أنت متأكد؟",
-  toastSaved:"تم الحفظ ✅", toastPaid:"تم تسجيل الدفعة 🎉", toastDeleted:"تم الحذف",
-  toastExported:"تم تصدير النسخة الاحتياطية ⬇️", toastImported:"تمت الاستعادة بنجاح ✅",
-  toastImportErr:"ملف غير صالح ❌", toastCleared:"تم مسح البيانات",
-  neverEnds:"لن تنتهي بالوضع الحالي ⚠️", chartLabel:"إجمالي الديون",
-  chartSnow:"كرة الثلج", chartAva:"الانهيار الجليدي",
-  freedomSubTpl:(m)=>`بعد ${m} ${m<=10?"أشهر":"شهراً"} من اليوم`,
-  cmpTpl:(m)=>`${m} شهر`, cmpIntTpl:(v)=>`فوائد: ${v}`,
-  namePh:"مثال: قرض السيارة"
-},
-en:{
-  appName:"Debt Free", appTag:"100% Private · Works Offline",
-  freedomLabel:"🎉 Your Financial Freedom Date", totalDebt:"Total Debt", monthsLeft:"Months Left",
-  totalInterest:"Projected Interest", monthlyOut:"Your Monthly Payment",
-  snowball:"Snowball ❄️", avalanche:"Avalanche 🏔️",
-  extraLabel:"Monthly extra payment:", warnMin:"⚠️ Current payments don't cover interest — debts will never end. Increase your extra payment.",
-  motivBadge:"Faster motivation 💪", saveBadge:"Saves more 💰",
-  yourDebts:"💳 Your Debts", addDebt:"+ Add Debt",
-  emptyMsg:"Start your journey to financial freedom — add your first debt.",
-  chartTitle:"📉 Debt Decline Over Time", amortTitle:"📅 Monthly Payoff Schedule",
-  thMonth:"Month", thDate:"Date", thPay:"Paid", thInt:"Interest", thBal:"Balance Left", thEvent:"Event",
-  dataTitle:"💾 Your Data (100% Local)", exportBtn:"⬇️ Export Backup (JSON)",
-  importBtn:"⬆️ Restore Backup", clearBtn:"🗑️ Clear All Data",
-  footer:"Your data never leaves your device 🔒",
-  builtBy:"Built by X Star Software · Follow us on Instagram",
-  addDebtTitle:"Add New Debt", editDebtTitle:"Edit Debt",
-  fName:"Debt name", fOriginal:"Original amount", fOriginalHint:"Total loan amount — used for progress bar",
-  fBalance:"Current balance", fMin:"Minimum monthly payment",
-  fRate:"Annual interest rate %", fRateHint:"Leave 0 for interest-free loans",
-  save:"Save", cancel:"Cancel",
-  payTitle:"Log a Payment 💰", payAmount:"Payment amount", confirmPay:"Confirm Payment",
-  targetBadge:"🎯 Focus here", pay:"Log payment", edit:"Edit", del:"Delete",
-  minPay:"Min payment:", ratePrefix:"interest", noRate:"Interest-free",
-  paidPct:"paid", months:"month", monthsWord:"months",
-  interestWord:"Interest:", debtFreeNow:"You are debt free! 🎉", addFirst:"Add debts to begin",
-  paidOff:"✅ Paid off:", confirmDel:"Delete this debt?",
-  confirmClear:"This will permanently erase all data. Are you sure?",
-  toastSaved:"Saved ✅", toastPaid:"Payment logged 🎉", toastDeleted:"Deleted",
-  toastExported:"Backup exported ⬇️", toastImported:"Restored successfully ✅",
-  toastImportErr:"Invalid file ❌", toastCleared:"All data cleared",
-  neverEnds:"Never (at current pace) ⚠️", chartLabel:"Total debt",
-  chartSnow:"Snowball", chartAva:"Avalanche",
-  freedomSubTpl:(m)=>`${m} ${m===1?"month":"months"} from today`,
-  cmpTpl:(m)=>`${m} months`, cmpIntTpl:(v)=>`Interest: ${v}`,
-  namePh:"e.g. Car loan"
-}};
-
-/* ============ State ============ */
-let state = { debts: [], settings: { strategy:"snowball", extra:0, theme:"dark", lang:"ar", currency:"KWD" } };
-let db = null, memoryMode = false, chart = null, editingId = null, payingId = null;
-const $ = id => document.getElementById(id);
-const t = k => I18N[state.settings.lang][k];
-
-/* ============ IndexedDB ============ */
-function openDB(){
-  return new Promise((res,rej)=>{
-    try{
-      const r = indexedDB.open("debtfree_db", 1);
-      r.onupgradeneeded = e=>{
-        const d = e.target.result;
-        if(!d.objectStoreNames.contains("debts")) d.createObjectStore("debts",{keyPath:"id",autoIncrement:true});
-        if(!d.objectStoreNames.contains("settings")) d.createObjectStore("settings",{keyPath:"key"});
-      };
-      r.onsuccess = ()=>res(r.result);
-      r.onerror = ()=>rej(r.error);
-    }catch(e){ rej(e); }
-  });
-}
-function tx(store, mode, fn){
-  return new Promise((res,rej)=>{
-    if(memoryMode) return res(null);
-    const s = db.transaction(store, mode).objectStore(store);
-    const req = fn(s);
-    if(req && req.onsuccess !== undefined){ req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); }
-    else res(null);
-  });
-}
-async function loadAll(){
-  if(memoryMode) return;
-  const debts = await tx("debts","readonly",s=>s.getAll());
-  state.debts = debts || [];
-  const settings = await tx("settings","readonly",s=>s.getAll());
-  (settings||[]).forEach(s=>{ if(s.key in state.settings) state.settings[s.key]=s.value; });
-}
-async function persistDebt(d){ if(!memoryMode) return tx("debts","readwrite",s=>s.put(d)); }
-async function removeDebt(id){ if(!memoryMode) return tx("debts","readwrite",s=>s.delete(id)); }
-async function persistSetting(key,value){ if(!memoryMode) return tx("settings","readwrite",s=>s.put({key,value})); }
-async function clearStores(){ if(!memoryMode){ await tx("debts","readwrite",s=>s.clear()); await tx("settings","readwrite",s=>s.clear()); } }
-
-/* ============ Payoff Engine ============ */
-function simulate(debts, extra, strategy){
-  let active = debts.filter(d=>d.balance>0).map(d=>({...d}));
-  if(!active.length) return {months:0,totalInterest:0,timeline:[],events:[],never:false};
-  const sorter = strategy==="snowball"
-    ? (a,b)=>a.balance-b.balance
-    : (a,b)=>b.interestRate-a.interestRate || a.balance-b.balance;
-  const timeline=[], events=[];
-  let month=0, totalInterest=0;
-  const now = new Date();
-  while(active.some(d=>d.balance>0.005) && month<600){
-    month++;
-    active.sort(sorter);
-    let monthInterest=0, monthPaid=0, pool=extra;
-    active.forEach(d=>{
-      if(d.balance>0){
-        const i = d.balance*(d.interestRate/100/12);
-        d.balance += i; monthInterest += i;
-      }
-    });
-    active.forEach(d=>{
-      if(d.balance>0){
-        const pay = Math.min(d.minPayment, d.balance);
-        d.balance -= pay; monthPaid += pay;
-        pool += (d.minPayment - pay);
-      }
-    });
-    for(const d of active){
-      if(pool<=0) break;
-      if(d.balance>0){
-        const pay = Math.min(pool, d.balance);
-        d.balance -= pay; monthPaid += pay; pool -= pay;
-      }
-    }
-    const paidOffNow = active.filter(d=>d.balance<=0.005 && !d._done);
-    paidOffNow.forEach(d=>{ d._done=true; events.push({month, name:d.name}); });
-    totalInterest += monthInterest;
-    const dt = new Date(now.getFullYear(), now.getMonth()+month, 1);
-    timeline.push({month, date:dt, paid:monthPaid, interest:monthInterest,
-      balance:Math.max(0, active.reduce((s,d)=>s+Math.max(0,d.balance),0)),
-      events:paidOffNow.map(d=>d.name)});
-  }
-  return {months:month, totalInterest, timeline, events, never: month>=600};
-}
-
-/* ============ Formatting ============ */
-function fmt(n){
-  const loc = state.settings.lang==="ar" ? "ar-KW" : "en-KW";
-  try{ return new Intl.NumberFormat(loc,{style:"currency",currency:state.settings.currency,maximumFractionDigits:3}).format(n); }
-  catch(e){ return n.toFixed(3)+" "+state.settings.currency; }
-}
-function fmtDate(d){
-  const loc = state.settings.lang==="ar" ? "ar" : "en";
-  return new Intl.DateTimeFormat(loc,{month:"long",year:"numeric"}).format(d);
-}
-function fmtDateShort(d){
-  const loc = state.settings.lang==="ar" ? "ar" : "en";
-  return new Intl.DateTimeFormat(loc,{month:"short",year:"2-digit"}).format(d);
-}
-
-/* ============ Render ============ */
-function applyLang(){
-  const L = state.settings.lang;
-  document.documentElement.lang = L;
-  document.documentElement.dir = L==="ar" ? "rtl" : "ltr";
-  document.querySelectorAll("[data-i18n]").forEach(el=>{
-    const k = el.getAttribute("data-i18n");
-    if(I18N[L][k]) el.textContent = I18N[L][k];
-  });
-  $("langBtn").textContent = L==="ar" ? "English" : "العربية";
-  $("fName").placeholder = t("namePh");
-  document.title = L==="ar" ? "محرر الديون | Debt Free" : "Debt Free | محرر الديون";
-}
-function applyTheme(){
-  document.documentElement.setAttribute("data-theme", state.settings.theme);
-  $("themeBtn").textContent = state.settings.theme==="dark" ? "☀️" : "🌙";
-  document.querySelector('meta[name="theme-color"]').content = state.settings.theme==="dark" ? "#0e1420" : "#f6f4ef";
-}
-function renderAll(){
-  applyLang();
-  const debts = state.debts;
-  const extra = state.settings.extra;
-  const strat = state.settings.strategy;
-  const cur = simulate(debts, extra, strat);
-  const snow = strat==="snowball" ? cur : simulate(debts, extra, "snowball");
-  const ava  = strat==="avalanche" ? cur : simulate(debts, extra, "avalanche");
-
-  /* Hero */
-  const total = debts.reduce((s,d)=>s+d.balance,0);
-  const monthlyOut = debts.filter(d=>d.balance>0).reduce((s,d)=>s+d.minPayment,0)+extra;
-  $("stTotal").textContent = fmt(total);
-  $("stMonthly").textContent = fmt(monthlyOut);
-  $("stInterest").textContent = fmt(cur.totalInterest);
-  if(!debts.length){
-    $("freedomDate").textContent = "—";
-    $("freedomSub").textContent = t("addFirst");
-    $("stMonths").textContent = "—";
-  } else if(total<=0.005){
-    $("freedomDate").textContent = t("debtFreeNow");
-    $("freedomSub").textContent = "";
-    $("stMonths").textContent = "0";
-  } else if(cur.never){
-    $("freedomDate").textContent = t("neverEnds");
-    $("freedomSub").textContent = "";
-    $("stMonths").textContent = "∞";
-  } else {
-    const end = cur.timeline[cur.timeline.length-1].date;
-    $("freedomDate").textContent = fmtDate(end);
-    $("freedomSub").textContent = I18N[state.settings.lang].freedomSubTpl(cur.months);
-    $("stMonths").textContent = cur.months;
-  }
-  $("warnBox").classList.toggle("show", cur.never && total>0);
-
-  /* Strategy segment */
-  $("segSnow").classList.toggle("active", strat==="snowball");
-  $("segAva").classList.toggle("active", strat==="avalanche");
-  $("extraInput").value = extra;
-
-  /* Comparison */
-  const L = I18N[state.settings.lang];
-  $("cmpSnowMonths").textContent = snow.never ? t("neverEnds") : L.cmpTpl(snow.months);
-  $("cmpSnowInt").textContent = L.cmpIntTpl(fmt(snow.totalInterest));
-  $("cmpAvaMonths").textContent = ava.never ? t("neverEnds") : L.cmpTpl(ava.months);
-  $("cmpAvaInt").textContent = L.cmpIntTpl(fmt(ava.totalInterest));
-  const avaSaves = ava.totalInterest < snow.totalInterest - 0.005;
-  $("cmpAvaBadge").style.display = avaSaves ? "inline-block" : "none";
-  $("cmpSnowBadge").style.display = debts.length ? "inline-block" : "none";
-  $("cmpSnow").classList.toggle("best", strat==="snowball");
-  $("cmpAva").classList.toggle("best", strat==="avalanche");
-
-  renderCards(cur, strat);
-  renderChart(snow, ava);
-  renderAmort(cur);
-}
-function renderCards(cur, strat){
-  const wrap = $("cards"); wrap.innerHTML = "";
-  const debts = [...state.debts];
-  $("emptyState").style.display = debts.length ? "none" : "block";
-  if(!debts.length) return;
-  const sorter = strat==="snowball" ? (a,b)=>a.balance-b.balance : (a,b)=>b.interestRate-a.interestRate || a.balance-b.balance;
-  const activeSorted = debts.filter(d=>d.balance>0.005).sort(sorter);
-  const targetId = activeSorted.length ? activeSorted[0].id : null;
-  const payoffMap = {}; cur.events.forEach(e=>payoffMap[e.name]=e.month);
-  debts.sort((a,b)=>(a.balance<=0.005)-(b.balance<=0.005) || sorter(a,b));
-  debts.forEach(d=>{
-    const pct = d.originalAmount>0 ? Math.min(100, Math.round((1 - d.balance/d.originalAmount)*100)) : 0;
-    const isTarget = d.id===targetId;
-    const rateTxt = d.interestRate>0 ? `${d.interestRate}% ${t("ratePrefix")}` : t("noRate");
-    const el = document.createElement("div");
-    el.className = "debt"+(isTarget?" target":"");
-    el.innerHTML = `
-      ${isTarget?`<span class="target-badge">${t("targetBadge")}</span>`:""}
-      <h3>${escapeHtml(d.name)}</h3>
-      <div class="rate">${rateTxt}</div>
-      <div class="bal">${fmt(d.balance)}</div>
-      <div class="meta">${t("minPay")} ${fmt(d.minPayment)}</div>
-      <div class="progress"><i style="width:${pct}%"></i></div>
-      <div class="pct">${pct}% ${t("paidPct")}</div>
-      <div class="debt-actions">
-        <button class="btn" data-act="pay">${t("pay")}</button>
-        <button class="btn ghost" data-act="edit">${t("edit")}</button>
-        <button class="btn danger" data-act="del">🗑️</button>
-      </div>`;
-    el.querySelector('[data-act="pay"]').onclick = ()=>openPay(d.id);
-    el.querySelector('[data-act="edit"]').onclick = ()=>openDebtModal(d.id);
-    el.querySelector('[data-act="del"]').onclick = ()=>delDebt(d.id);
-    wrap.appendChild(el);
-  });
-}
-function renderChart(snow, ava){
-  const ctx = $("chart").getContext("2d");
-  const longest = snow.timeline.length >= ava.timeline.length ? snow.timeline : ava.timeline;
-  const labels = [fmtDateShort(new Date()), ...longest.map(p=>fmtDateShort(p.date))];
-  const start = state.debts.reduce((s,d)=>s+d.balance,0);
-  const mk = tl => [start, ...tl.map(p=>p.balance)];
-  const css = getComputedStyle(document.documentElement);
-  const accent = css.getPropertyValue("--accent").trim();
-  const gold = css.getPropertyValue("--gold").trim();
-  const muted = css.getPropertyValue("--muted").trim();
-  const line = css.getPropertyValue("--line").trim();
-  if(chart) chart.destroy();
-  chart = new Chart(ctx,{
-    type:"line",
-    data:{ labels,
-      datasets:[
-        {label:t("chartSnow"), data:mk(snow.timeline), borderColor:accent, backgroundColor:accent+"22", fill:true, tension:.3, pointRadius:0, borderWidth:2.5},
-        {label:t("chartAva"), data:mk(ava.timeline), borderColor:gold, borderDash:[6,4], fill:false, tension:.3, pointRadius:0, borderWidth:2}
-      ]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      interaction:{mode:"index",intersect:false},
-      plugins:{ legend:{labels:{color:muted, font:{family:"IBM Plex Sans Arabic"}}},
-        tooltip:{rtl:state.settings.lang==="ar", callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`}} },
-      scales:{
-        x:{ticks:{color:muted,maxTicksLimit:10},grid:{color:line},reverse:state.settings.lang==="ar"},
-        y:{ticks:{color:muted,callback:v=>fmt(v)},grid:{color:line},beginAtZero:true}
-      }
-    }
-  });
-}
-function renderAmort(cur){
-  const body = $("amortBody"); body.innerHTML = "";
-  const rows = cur.timeline.slice(0, 240);
-  rows.forEach(p=>{
-    const tr = document.createElement("tr");
-    if(p.events.length) tr.className = "payoff";
-    tr.innerHTML = `<td>${p.month}</td><td>${fmtDateShort(p.date)}</td>
-      <td>${fmt(p.paid)}</td><td>${fmt(p.interest)}</td><td>${fmt(p.balance)}</td>
-      <td>${p.events.length ? t("paidOff")+" "+p.events.map(escapeHtml).join("، ") : "—"}</td>`;
-    body.appendChild(tr);
-  });
-}
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function toast(msg){ const el=$("toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
-
-/* ============ Debt CRUD ============ */
-function openDebtModal(id){
-  editingId = id || null;
-  $("modalTitle").textContent = id ? t("editDebtTitle") : t("addDebtTitle");
-  const d = id ? state.debts.find(x=>x.id===id) : null;
-  $("fName").value = d?d.name:"";
-  $("fOriginal").value = d?d.originalAmount:"";
-  $("fBalance").value = d?d.balance:"";
-  $("fMin").value = d?d.minPayment:"";
-  $("fRate").value = d?d.interestRate:0;
-  $("debtOverlay").classList.add("show");
-  $("fName").focus();
-}
-async function saveDebt(){
-  const name = $("fName").value.trim();
-  const original = parseFloat($("fOriginal").value)||0;
-  const balance = parseFloat($("fBalance").value)||0;
-  const minP = parseFloat($("fMin").value)||0;
-  const rate = parseFloat($("fRate").value)||0;
-  if(!name || balance<=0 || minP<=0) return;
-  if(editingId){
-    const d = state.debts.find(x=>x.id===editingId);
-    Object.assign(d,{name, originalAmount:Math.max(original,balance), balance, minPayment:minP, interestRate:rate});
-    await persistDebt(d);
-  } else {
-    const d = {name, originalAmount:Math.max(original,balance), balance, minPayment:minP,
-      interestRate:rate, createdAt:new Date().toISOString(), payments:[]};
-    if(memoryMode){ d.id = Date.now(); state.debts.push(d); }
-    else { const id = await persistDebt(d); d.id = id; state.debts.push(d); }
-  }
-  $("debtOverlay").classList.remove("show");
-  toast(t("toastSaved")); renderAll();
-}
-async function delDebt(id){
-  if(!confirm(t("confirmDel"))) return;
-  state.debts = state.debts.filter(d=>d.id!==id);
-  await removeDebt(id);
-  toast(t("toastDeleted")); renderAll();
-}
-function openPay(id){
-  payingId = id;
-  const d = state.debts.find(x=>x.id===id);
-  $("payDebtName").textContent = d.name + " — " + fmt(d.balance);
-  $("payAmount").value = "";
-  $("payOverlay").classList.add("show");
-  $("payAmount").focus();
-}
-async function savePay(){
-  const amt = parseFloat($("payAmount").value)||0;
-  if(amt<=0) return;
-  const d = state.debts.find(x=>x.id===payingId);
-  d.balance = Math.max(0, d.balance - amt);
-  d.payments = d.payments||[];
-  d.payments.push({date:new Date().toISOString(), amount:amt});
-  await persistDebt(d);
-  $("payOverlay").classList.remove("show");
-  toast(t("toastPaid")); renderAll();
-}
-
-/* ============ Backup / Restore ============ */
-function exportJSON(){
-  const data = JSON.stringify({version:1, exportedAt:new Date().toISOString(),
-    settings:state.settings, debts:state.debts}, null, 2);
-  const blob = new Blob([data],{type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "debt-free-backup-"+new Date().toISOString().slice(0,10)+".json";
-  a.click(); URL.revokeObjectURL(a.href);
-  toast(t("toastExported"));
-}
-function importJSON(file){
-  const r = new FileReader();
-  r.onload = async e=>{
-    try{
-      const data = JSON.parse(e.target.result);
-      if(!Array.isArray(data.debts)) throw 0;
-      await clearStores();
-      state.debts = data.debts.map(d=>({...d}));
-      if(data.settings) Object.assign(state.settings, data.settings);
-      for(const d of state.debts) await persistDebt(d);
-      for(const k of Object.keys(state.settings)) await persistSetting(k, state.settings[k]);
-      applyTheme(); renderAll();
-      toast(t("toastImported"));
-    }catch(err){ toast(t("toastImportErr")); }
-  };
-  r.readAsText(file);
-}
-async function clearAll(){
-  if(!confirm(t("confirmClear"))) return;
-  state.debts = [];
-  await clearStores();
-  toast(t("toastCleared")); renderAll();
-}
-
-/* ============ Events ============ */
-$("langBtn").onclick = async ()=>{ state.settings.lang = state.settings.lang==="ar"?"en":"ar"; await persistSetting("lang",state.settings.lang); renderAll(); };
-$("themeBtn").onclick = async ()=>{ state.settings.theme = state.settings.theme==="dark"?"light":"dark"; await persistSetting("theme",state.settings.theme); applyTheme(); renderAll(); };
-$("segSnow").onclick = async ()=>{ state.settings.strategy="snowball"; await persistSetting("strategy","snowball"); renderAll(); };
-$("segAva").onclick = async ()=>{ state.settings.strategy="avalanche"; await persistSetting("strategy","avalanche"); renderAll(); };
-$("extraInput").addEventListener("change", async e=>{ state.settings.extra = Math.max(0, parseFloat(e.target.value)||0); await persistSetting("extra",state.settings.extra); renderAll(); });
-$("addBtn").onclick = ()=>openDebtModal(null);
-$("saveDebtBtn").onclick = saveDebt;
-$("cancelDebtBtn").onclick = ()=>$("debtOverlay").classList.remove("show");
-$("savePayBtn").onclick = savePay;
-$("cancelPayBtn").onclick = ()=>$("payOverlay").classList.remove("show");
-$("exportBtn").onclick = exportJSON;
-$("importBtn").onclick = ()=>$("importFile").click();
-$("importFile").addEventListener("change", e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=""; });
-$("clearBtn").onclick = clearAll;
-document.querySelectorAll(".overlay").forEach(ov=>ov.addEventListener("click",e=>{ if(e.target===ov) ov.classList.remove("show"); }));
-document.addEventListener("keydown",e=>{ if(e.key==="Escape") document.querySelectorAll(".overlay.show").forEach(o=>o.classList.remove("show")); });
-
-/* ============ Init ============ */
-(async function init(){
-  try{ db = await openDB(); await loadAll(); }
-  catch(e){ memoryMode = true; }
-  applyTheme(); renderAll();
-})();
-</script>
-
-<!-- PWA: service worker registration (offline support only — no tracking) -->
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("sw.js").catch(function () { /* offline support unavailable — app still works */ });
-  });
-}
-</script>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+<input type="file" id="import-file" accept="application/json,.json" hidden>
+<noscript><p class="banner banner-danger shell">هذا التطبيق يحتاج تفعيل JavaScript. · This app needs JavaScript enabled.</p></noscript>
 </body>
 </html>

@@ -1,0 +1,10 @@
+# Debt Free — محرر الديون
+
+> A private, offline-first web app (PWA) that tells you the exact month you will be debt-free and compares the Snowball and Avalanche payoff strategies. Arabic-first (RTL) with English, built for Kuwait and the GCC by X Star Software.
+
+- No accounts, no servers, no tracking: all data stays in the browser (IndexedDB) and can be exported as a JSON backup.
+- Strategies: Snowball (smallest balance first) and Avalanche (highest rate first), with freed payments rolling over to the next debt.
+- Features: extra monthly payment and one-time payment what-ifs, per-debt payoff dates, payment history with undo, monthly schedule, debt-to-income ratio, Islamic-finance terminology (profit instead of interest), printable plan, calendar reminder and a shareable progress card that contains no amounts.
+- Figures are planning estimates; lenders may calculate differently (daily interest, fees, early-settlement terms).
+
+App: https://debt-free-tracker-phi.vercel.app/
