@@ -1,0 +1,5 @@
+commit 5d373a9168187ccb4cfffc42df155ee2fbdc9393
+$ gitleaks detect --source . --redact   # full history
+12:37PM INF 14 commits scanned.
+12:37PM INF scan completed in 253ms
+12:37PM INF no leaks found
