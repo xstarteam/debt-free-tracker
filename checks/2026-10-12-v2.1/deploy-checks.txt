@@ -1,0 +1,9 @@
+commit 5d373a9168187ccb4cfffc42df155ee2fbdc9393
+$ node tools/check.mjs
+  ok  16 JS files parse
+  ok  sw.js precache current (const VERSION = '2.1.0-ecc28ad12e';)
+  ok  78 page + 6 manifest references resolve (5 pages)
+  ok  zero third-party runtime requests
+  ok  CSP meta matches vercel.json header on every page, no inline scripts
+
+all deploy checks passed

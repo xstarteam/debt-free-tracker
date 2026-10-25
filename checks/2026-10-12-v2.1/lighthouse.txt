@@ -1,0 +1,14 @@
+commit 5d373a9168187ccb4cfffc42df155ee2fbdc9393
+$ lighthouse <url> [--preset=desktop] --only-categories=performance,accessibility,best-practices,seo   # Lighthouse 12.8.2, Chromium 1194
+# A. local python static server: no compression, no cache headers (same setup as checks/2026-10-12)
+app /, mobile: Performance 84 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 2.7 s · Largest Contentful Paint 3.8 s · Total Blocking Time 90 ms · Cumulative Layout Shift 0 · Speed Index 2.7 s
+app /, desktop: Performance 99 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 0.6 s · Largest Contentful Paint 0.7 s · Total Blocking Time 0 ms · Cumulative Layout Shift 0.011 · Speed Index 0.6 s
+guides/debt-buyout.html, mobile: Performance 95 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 2.1 s · Largest Contentful Paint 2.6 s · Total Blocking Time 0 ms · Cumulative Layout Shift 0.019 · Speed Index 2.1 s
+# B. local node server with gzip + cache headers (closer to Vercel, which serves brotli)
+app /, mobile: Performance 95 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 1.7 s · Largest Contentful Paint 2.7 s · Total Blocking Time 80 ms · Cumulative Layout Shift 0 · Speed Index 1.7 s
+guides/debt-buyout.html, mobile: Performance 97 | Accessibility 100 | Best Practices 100 | SEO 100
+   First Contentful Paint 1.8 s · Largest Contentful Paint 2.3 s · Total Blocking Time 0 ms · Cumulative Layout Shift 0.019 · Speed Index 1.8 s

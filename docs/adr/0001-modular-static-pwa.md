@@ -1,6 +1,6 @@
 # ADR 0001 — Modular static PWA (Light tier)
 
-- Status: proposed (needs owner approval)
+- Status: accepted — approved by the owner on 2026-10-12
 - Date: 2026-10-12
 - Tier: Light (no accounts, no server-held user data, no money movement, no uploads, no admin, no sync)
 

@@ -1,0 +1,370 @@
+commit 5d373a9168187ccb4cfffc42df155ee2fbdc9393
+$ node --test "tests/*.test.mjs"
+TAP version 13
+# (node:6747) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/debt-free-tracker/assets/js/engine.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/debt-free-tracker/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: freed minimums roll over every month (the v1 bug)
+ok 1 - freed minimums roll over every month (the v1 bug)
+  ---
+  duration_ms: 2.498778
+  type: 'test'
+  ...
+# Subtest: budget stays constant while debts are cleared
+ok 2 - budget stays constant while debts are cleared
+  ---
+  duration_ms: 0.616094
+  type: 'test'
+  ...
+# Subtest: snowball attacks the smallest balance, avalanche the highest rate
+ok 3 - snowball attacks the smallest balance, avalanche the highest rate
+  ---
+  duration_ms: 2.581783
+  type: 'test'
+  ...
+# Subtest: sample portfolio matches the corrected plan (31 months)
+ok 4 - sample portfolio matches the corrected plan (31 months)
+  ---
+  duration_ms: 0.410736
+  type: 'test'
+  ...
+# Subtest: paying a debt early never pushes the freedom date later
+ok 5 - paying a debt early never pushes the freedom date later
+  ---
+  duration_ms: 0.336021
+  type: 'test'
+  ...
+# Subtest: money is exact: every value is an integer and paid = start + interest
+ok 6 - money is exact: every value is an integer and paid = start + interest
+  ---
+  duration_ms: 0.585539
+  type: 'test'
+  ...
+# Subtest: interest is rounded to the nearest fil
+ok 7 - interest is rounded to the nearest fil
+  ---
+  duration_ms: 0.169752
+  type: 'test'
+  ...
+# Subtest: a plan that can never end is detected early, not after 50 years
+ok 8 - a plan that can never end is detected early, not after 50 years
+  ---
+  duration_ms: 0.28786
+  type: 'test'
+  ...
+# Subtest: minimum extra to finish is exact to the fil
+ok 9 - minimum extra to finish is exact to the fil
+  ---
+  duration_ms: 16.78458
+  type: 'test'
+  ...
+# Subtest: lump sum lands in its month
+ok 10 - lump sum lands in its month
+  ---
+  duration_ms: 0.824277
+  type: 'test'
+  ...
+# Subtest: zero-interest debt: interest stays zero
+ok 11 - zero-interest debt: interest stays zero
+  ---
+  duration_ms: 0.311021
+  type: 'test'
+  ...
+# Subtest: empty and fully-paid portfolios
+ok 12 - empty and fully-paid portfolios
+  ---
+  duration_ms: 0.222209
+  type: 'test'
+  ...
+# Subtest: buildPlan exposes the impact of extras against a baseline
+ok 13 - buildPlan exposes the impact of extras against a baseline
+  ---
+  duration_ms: 1.155227
+  type: 'test'
+  ...
+# Subtest: plan horizon is capped
+ok 14 - plan horizon is capped
+  ---
+  duration_ms: 0.809651
+  type: 'test'
+  ...
+# Subtest: month helpers
+ok 15 - month helpers
+  ---
+  duration_ms: 0.640427
+  type: 'test'
+  ...
+# Subtest: custom order sends the extra money to the user's first pick
+ok 16 - custom order sends the extra money to the user's first pick
+  ---
+  duration_ms: 0.593807
+  type: 'test'
+  ...
+# Subtest: buildPlan follows the custom order and rejects unknown strategies
+ok 17 - buildPlan follows the custom order and rejects unknown strategies
+  ---
+  duration_ms: 0.768283
+  type: 'test'
+  ...
+# Subtest: a yearly bonus repeats every 12 months
+ok 18 - a yearly bonus repeats every 12 months
+  ---
+  duration_ms: 0.300542
+  type: 'test'
+  ...
+# Subtest: next month allocation: every minimum, the extra to the target
+ok 19 - next month allocation: every minimum, the extra to the target
+  ---
+  duration_ms: 0.622817
+  type: 'test'
+  ...
+# Subtest: daily cost of today's balances
+ok 20 - daily cost of today's balances
+  ---
+  duration_ms: 0.24666
+  type: 'test'
+  ...
+# Subtest: a flat-rate contract converts to its real reducing rate
+ok 21 - a flat-rate contract converts to its real reducing rate
+  ---
+  duration_ms: 0.80296
+  type: 'test'
+  ...
+# Subtest: contract balance after installments already paid
+ok 22 - contract balance after installments already paid
+  ---
+  duration_ms: 0.597852
+  type: 'test'
+  ...
+# Subtest: debt buyout compares total cost, term and installment
+ok 23 - debt buyout compares total cost, term and installment
+  ---
+  duration_ms: 0.660498
+  type: 'test'
+  ...
+# Subtest: a month already partly paid: month 1 only asks for the rest
+ok 24 - a month already partly paid: month 1 only asks for the rest
+  ---
+  duration_ms: 0.529709
+  type: 'test'
+  ...
+# (node:6749) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/debt-free-tracker/assets/js/i18n.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/debt-free-tracker/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Arabic month counts follow the dual / plural rules
+ok 25 - Arabic month counts follow the dual / plural rules
+  ---
+  duration_ms: 1.425391
+  type: 'test'
+  ...
+# Subtest: durations read naturally in both languages
+ok 26 - durations read naturally in both languages
+  ---
+  duration_ms: 0.327115
+  type: 'test'
+  ...
+# Subtest: translator falls back to Arabic for unknown languages
+ok 27 - translator falls back to Arabic for unknown languages
+  ---
+  duration_ms: 0.209365
+  type: 'test'
+  ...
+# Subtest: v1 debts (floats) migrate to integer fils
+ok 28 - v1 debts (floats) migrate to integer fils
+  ---
+  duration_ms: 2.30573
+  type: 'test'
+  ...
+# Subtest: unusable debts are dropped, hostile values neutralised
+ok 29 - unusable debts are dropped, hostile values neutralised
+  ---
+  duration_ms: 1.45184
+  type: 'test'
+  ...
+# Subtest: settings: unknown keys and bad enums fall back (the v1 "lang: fr" brick)
+ok 30 - settings: unknown keys and bad enums fall back (the v1 "lang: fr" brick)
+  ---
+  duration_ms: 0.536552
+  type: 'test'
+  ...
+# Subtest: backups: v2 round-trip and v1 import
+ok 31 - backups: v2 round-trip and v1 import
+  ---
+  duration_ms: 0.567873
+  type: 'test'
+  ...
+# Subtest: backups: garbage is rejected without throwing
+ok 32 - backups: garbage is rejected without throwing
+  ---
+  duration_ms: 0.253229
+  type: 'test'
+  ...
+# Subtest: v2.1 settings: custom order, yearly bonus and goal month are validated
+ok 33 - v2.1 settings: custom order, yearly bonus and goal month are validated
+  ---
+  duration_ms: 0.387667
+  type: 'test'
+  ...
+# Subtest: debt priority survives sanitising and backups; junk is dropped
+ok 34 - debt priority survives sanitising and backups; junk is dropped
+  ---
+  duration_ms: 0.613614
+  type: 'test'
+  ...
+# Subtest: Arabic and English carry the same keys (no missing copy in either language)
+ok 35 - Arabic and English carry the same keys (no missing copy in either language)
+  ---
+  duration_ms: 0.511636
+  type: 'test'
+  ...
+# (node:6754) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/debt-free-tracker/assets/js/money.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/debt-free-tracker/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: parse "1.500" KD -> 1500 fils
+ok 36 - parse "1.500" KD -> 1500 fils
+  ---
+  duration_ms: 3.865057
+  type: 'test'
+  ...
+# Subtest: parse "1.5" and "1.50" -> 1500 fils
+ok 37 - parse "1.5" and "1.50" -> 1500 fils
+  ---
+  duration_ms: 0.55822
+  type: 'test'
+  ...
+# Subtest: parse "0.001" -> 1 fils; "0.0005" rejected (no sub-fils)
+ok 38 - parse "0.001" -> 1 fils; "0.0005" rejected (no sub-fils)
+  ---
+  duration_ms: 2.280898
+  type: 'test'
+  ...
+# Subtest: trailing zeros past three decimals are harmless
+ok 39 - trailing zeros past three decimals are harmless
+  ---
+  duration_ms: 0.234992
+  type: 'test'
+  ...
+# Subtest: negative amounts rejected at input
+ok 40 - negative amounts rejected at input
+  ---
+  duration_ms: 0.316727
+  type: 'test'
+  ...
+# Subtest: zero allowed only where the field allows it
+ok 41 - zero allowed only where the field allows it
+  ---
+  duration_ms: 0.888485
+  type: 'test'
+  ...
+# Subtest: empty and garbage are rejected
+ok 42 - empty and garbage are rejected
+  ---
+  duration_ms: 0.251776
+  type: 'test'
+  ...
+# Subtest: Arabic-Indic and Persian digits are accepted
+ok 43 - Arabic-Indic and Persian digits are accepted
+  ---
+  duration_ms: 0.514659
+  type: 'test'
+  ...
+# Subtest: thousands separators and currency labels are ignored
+ok 44 - thousands separators and currency labels are ignored
+  ---
+  duration_ms: 0.5904
+  type: 'test'
+  ...
+# Subtest: two-decimal currencies reject a third decimal
+ok 45 - two-decimal currencies reject a third decimal
+  ---
+  duration_ms: 0.680044
+  type: 'test'
+  ...
+# Subtest: absurdly large amounts rejected
+ok 46 - absurdly large amounts rejected
+  ---
+  duration_ms: 0.230711
+  type: 'test'
+  ...
+# Subtest: format 1500 fils -> 1.500 (Latin digits in both languages)
+ok 47 - format 1500 fils -> 1.500 (Latin digits in both languages)
+  ---
+  duration_ms: 20.491258
+  type: 'test'
+  ...
+# Subtest: format rounds two-decimal currencies to the cent
+ok 48 - format rounds two-decimal currencies to the cent
+  ---
+  duration_ms: 0.248641
+  type: 'test'
+  ...
+# Subtest: negative display keeps the sign (refund/adjustment views)
+ok 49 - negative display keeps the sign (refund/adjustment views)
+  ---
+  duration_ms: 0.109883
+  type: 'test'
+  ...
+# Subtest: sum of line items stays integer
+ok 50 - sum of line items stays integer
+  ---
+  duration_ms: 0.248619
+  type: 'test'
+  ...
+# Subtest: input round-trip keeps exact fils
+ok 51 - input round-trip keeps exact fils
+  ---
+  duration_ms: 0.334858
+  type: 'test'
+  ...
+# Subtest: compact axis labels
+ok 52 - compact axis labels
+  ---
+  duration_ms: 0.399836
+  type: 'test'
+  ...
+# Subtest: rates: parse and format
+ok 53 - rates: parse and format
+  ---
+  duration_ms: 0.570165
+  type: 'test'
+  ...
+# (node:6768) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/debt-free-tracker/assets/js/vault.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /home/user/debt-free-tracker/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: encrypted backup round-trips with the right passphrase
+ok 54 - encrypted backup round-trips with the right passphrase
+  ---
+  duration_ms: 590.488844
+  type: 'test'
+  ...
+# Subtest: wrong passphrase and edited files are rejected, never decoded to garbage
+ok 55 - wrong passphrase and edited files are rejected, never decoded to garbage
+  ---
+  duration_ms: 977.837715
+  type: 'test'
+  ...
+# Subtest: malformed or hostile envelopes fail fast as "format"
+ok 56 - malformed or hostile envelopes fail fast as "format"
+  ---
+  duration_ms: 274.992865
+  type: 'test'
+  ...
+# Subtest: passphrases are Unicode-normalised (same key for composed and decomposed input)
+ok 57 - passphrases are Unicode-normalised (same key for composed and decomposed input)
+  ---
+  duration_ms: 604.063742
+  type: 'test'
+  ...
+1..57
+# tests 57
+# suites 0
+# pass 57
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2670.25228
